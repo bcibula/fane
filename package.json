@@ -1,0 +1,25 @@
+{
+  "name": "fane",
+  "version": "1.0.0",
+  "description": "AI-powered market intelligence and trading system",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "init-db": "node src/db/init.js",
+    "brief": "node src/agent/test-briefing.js"
+  },
+  "keywords": [],
+  "author": "Brad",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.93.0",
+    "better-sqlite3": "^12.9.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "marked": "^18.0.3",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^8.0.7",
+    "yahoo-finance2": "^3.14.0"
+  }
+}

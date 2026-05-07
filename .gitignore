@@ -1,0 +1,7 @@
+node_modules/
+data/fane.db
+logs/
+.env
+data/fane.db
+data/*.db
+node_modules/
