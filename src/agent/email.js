@@ -17,7 +17,7 @@ const transporter = nodemailer.createTransport({
 export async function sendBriefingEmail(date, briefingText) {
   const subject = `Fane Morning Briefing — ${date}`;
   const briefingHtml = marked(briefingText);
-  const webUrl = `http://62.238.13.86:3000/briefing/${date}`;
+  const webUrl = `http://fane:3000/briefing/${date}`;
 
   const html = `
     <div style="font-family: sans-serif; max-width: 680px; margin: 0 auto;">

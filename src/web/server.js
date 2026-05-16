@@ -514,6 +514,11 @@ app.get('/annotations/:date', (req, res) => {
   res.json(annotations);
 });
 
+
+// Binds to all interfaces by design. Network-level protection is provided
+// by Hetzner Cloud Firewall, not by service-level interface binding.
+// If Fane ever migrates to a host without a managed firewall, lock this
+// down to 127.0.0.1 and use SSH tunneling or Tailscale serve for remote access.
 app.listen(PORT, '0.0.0.0', () => {
   console.log('Fane web server running on port ' + PORT);
 });
