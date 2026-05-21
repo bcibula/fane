@@ -2,6 +2,7 @@
 
 ## 2026-05-20
 Goal: Author MEMORY.md for OpenClaw injection layer
+
 Accomplished:
   - MEMORY.md authored from scratch across five sections: Principles,
     Architecture, Current Stage, Open Questions, Decisions Log
@@ -12,6 +13,17 @@ Accomplished:
   - openclaw.json.template created with secrets redacted
   - README.md added to fane repo with rebuild guide and companion repo
     reference
-Open: OpenClaw agent tool filesystem permissions not yet applied
+  - SESSIONS.md created as append-only development log
+  - Identified Claude.ai context continuity as a structural problem
+    worth solving properly — dedicated session planned
+
+
+Open:
+OpenClaw agent tool filesystem permissions not yet applied
   (agents.defaults.permissions.filesystem in openclaw.json)
-Next: Stage 2 IBKR connectivity — API surface and auth pattern
+
+
+Next: 
+  - Stage 2 IBKR connectivity — API surface and auth pattern
+  - Dedicated session: Claude.ai project configuration as context
+    injection layer
