@@ -1,2 +1,4 @@
-import { initDb } from './schema.js';
+import { initDb, migrateDb } from './schema.js';
+
 initDb();
+migrateDb();

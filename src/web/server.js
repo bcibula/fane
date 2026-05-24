@@ -4,11 +4,22 @@ import { config } from 'dotenv';
 import { marked } from 'marked';
 import { now } from '../utils/time.js';
 import Anthropic from '@anthropic-ai/sdk';
+import ibkr from '../ibkr/connection.js';
+import { getAccountSnapshot } from '../ibkr/account.js';
+import { submitOrder } from '../ibkr/orders.js';
 config();
 
 const app = express();
 const PORT = 3000;
 app.use(express.json());
+
+ibkr.connect();
+ibkr.on('disconnected', () =>
+  console.log(`[${now()}] Web: IBKR disconnected — approval routes unavailable.`)
+);
+ibkr.on('killed', ({ reason }) =>
+  console.error(`[${now()}] Web: Kill token fired — ${reason}`)
+);
 
 // ── Shared HTML helpers ──────────────────────────────────────────────────────
 
@@ -305,6 +316,162 @@ function escHtml(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+function navHtml(current = '') {
+  const connected = ibkr.isConnected;
+  const killed    = ibkr.isKilled;
+  const dotColor  = (killed || !connected) ? '#e53e3e' : '#38a169';
+  const dotLabel  = killed ? 'KILLED' : connected ? 'Connected' : 'Disconnected';
+ 
+  const pages = [
+    ['/',          'Briefing'],
+    ['/signals',   'Signals'],
+    ['/positions', 'Positions'],
+    ['/trades',    'Trades'],
+  ];
+ 
+  const links = pages.map(([href, label]) =>
+    `<a href="${href}" style="color:${current===href?'#111':'#666'};font-weight:${current===href?'600':'400'};text-decoration:none;">${label}</a>`
+  ).join('');
+ 
+  return `
+    <nav style="display:flex;align-items:center;gap:20px;padding:12px 0;border-bottom:1px solid #eee;margin-bottom:28px;">
+      <span style="font-weight:700;color:#111;">Fane</span>
+      ${links}
+      <span style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};display:inline-block;"></span>
+        <span style="font-size:12px;color:#888;">IBKR: ${dotLabel}</span>
+        ${!killed
+          ? `<button onclick="confirmKill()" style="margin-left:8px;border:1px solid #e53e3e;color:#e53e3e;background:none;border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer;">Kill</button>`
+          : `<strong style="margin-left:8px;font-size:12px;color:#e53e3e;">KILL ACTIVE — restart required</strong>`
+        }
+      </span>
+    </nav>
+    <script>
+      function confirmKill() {
+        const reason = prompt('Kill token reason (required):');
+        if (!reason?.trim()) return;
+        if (!confirm('This stops all IBKR activity for this session.\\nProcess restart required to reconnect.\\n\\nConfirm?')) return;
+        fetch('/api/kill', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: reason.trim() })
+        }).then(r => r.json()).then(() => location.reload());
+      }
+    </script>`;
+}
+ 
+// Shared page shell with base CSS used by all Stage 2 routes.
+// The existing / and /briefing/:date routes keep their own styles — no changes needed there.
+function pageShell(title, current, body) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <title>Fane — ${title}</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: sans-serif; max-width: 820px; margin: 0 auto; padding: 20px 20px 60px; color: #333; background: #fafafa; }
+    h1 { font-size: 22px; color: #111; margin: 0 0 4px; }
+    h2 { font-size: 17px; color: #111; margin: 0 0 14px; }
+    .meta { color: #888; font-size: 13px; margin-bottom: 20px; }
+    .card { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 20px 24px; margin-bottom: 16px; }
+    .stat-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .stat { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 14px 18px; flex: 1; min-width: 110px; }
+    .stat-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .stat-value { font-size: 20px; font-weight: 500; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 10px; border-bottom: 2px solid #eee; }
+    td { padding: 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .badge-buy       { background: #e6f4ea; color: #1a7f3c; }
+    .badge-sell      { background: #fdecea; color: #b91c1c; }
+    .badge-pending   { background: #fff7e6; color: #b45309; }
+    .badge-approved  { background: #e6f4ea; color: #1a7f3c; }
+    .badge-passed    { background: #f3f4f6; color: #6b7280; }
+    .badge-submitted { background: #eff6ff; color: #1d4ed8; }
+    .badge-filled    { background: #e6f4ea; color: #1a7f3c; }
+    .badge-cancelled { background: #f3f4f6; color: #6b7280; }
+    .badge-error     { background: #fdecea; color: #b91c1c; }
+    .badge-killed    { background: #fdecea; color: #b91c1c; }
+    label { display: block; font-size: 12px; color: #555; margin-bottom: 5px; font-weight: 600; }
+    textarea, input[type=number] {
+      width: 100%; border: 1px solid #ddd; border-radius: 5px; padding: 8px 10px;
+      font-size: 14px; font-family: inherit; resize: vertical; background: #fff;
+    }
+    textarea:focus, input:focus { outline: none; border-color: #999; }
+    .btn { display: inline-block; padding: 9px 20px; border-radius: 5px; font-size: 14px; cursor: pointer; border: none; font-family: inherit; font-weight: 500; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-pass    { background: #111; color: #fff; }
+    .btn-pass:not(:disabled):hover    { background: #333; }
+    .btn-approve { background: #1a7f3c; color: #fff; }
+    .btn-approve:not(:disabled):hover { background: #15652f; }
+    .conviction-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .conviction-opt input[type=radio] { display: none; }
+    .conviction-opt label {
+      display: inline-block; padding: 6px 14px; border: 1px solid #ddd;
+      border-radius: 4px; cursor: pointer; font-size: 13px; color: #666; font-weight: 400;
+    }
+    .conviction-opt input[type=radio]:checked + label {
+      border-color: #111; color: #111; font-weight: 600; background: #f5f5f5;
+    }
+    .section-heading { font-size: 12px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin: 28px 0 12px; border-top: 1px solid #eee; padding-top: 20px; }
+    .msg-ok  { background: #e6f4ea; border: 1px solid #a7d7b3; color: #1a7f3c; padding: 10px 14px; border-radius: 6px; font-size: 14px; margin-top: 12px; display: none; }
+    .msg-err { background: #fdecea; border: 1px solid #f5c6c6; color: #b91c1c; padding: 10px 14px; border-radius: 6px; font-size: 14px; margin-top: 12px; display: none; }
+    .empty-state { color: #888; font-size: 14px; text-align: center; padding: 40px 0; line-height: 2; }
+    .footer { margin-top: 40px; font-size: 12px; color: #bbb; }
+    .briefing { line-height: 1.7; background: #fff; padding: 24px; border-radius: 8px; border: 1px solid #eee; }
+    ${annotationStyles()}
+  </style>
+</head>
+<body>
+  ${navHtml(current)}
+  ${body}
+  <div class="footer">Default recommendation is no action. Action requires documented justification. — Fane</div>
+</body>
+</html>`;
+}
+ 
+// Persist a position + account snapshot to the DB.
+// Called by GET /positions on each successful IBKR fetch.
+function persistAccountSnapshot(snapshot) {
+  const db = getDb();
+  try {
+    const s = snapshot.summary;
+    db.prepare(`
+      INSERT INTO account_snapshots
+        (snapshot_at, net_liquidation, total_cash, buying_power, available_funds,
+         unrealized_pnl, realized_pnl, gross_position_value, currency)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      snapshot.fetchedAt,
+      s.NetLiquidation?.value     ?? null,
+      s.TotalCashValue?.value     ?? null,
+      s.BuyingPower?.value        ?? null,
+      s.AvailableFunds?.value     ?? null,
+      s.UnrealizedPnL?.value      ?? null,
+      s.RealizedPnL?.value        ?? null,
+      s.GrossPositionValue?.value ?? null,
+      s.NetLiquidation?.currency  ?? 'USD'
+    );
+    for (const p of snapshot.positions) {
+      db.prepare(`
+        INSERT INTO positions
+          (snapshot_at, account, symbol, sec_type, currency, exchange,
+           con_id, position, avg_cost)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        snapshot.fetchedAt, p.account, p.symbol, p.secType,
+        p.currency, p.exchange, p.conId, p.position, p.avgCost
+      );
+    }
+  } finally {
+    db.close();
+  }
+}
+ 
+
 // ── Routes ───────────────────────────────────────────────────────────────────
 
 app.get('/', (req, res) => {
@@ -315,71 +482,33 @@ app.get('/', (req, res) => {
     ORDER BY date DESC
     LIMIT 10
   `).all();
-
   const latest = snapshots[0];
   const annotations = latest ? db.prepare(`
     SELECT * FROM annotations WHERE briefing_date = ? ORDER BY created_at ASC
   `).all(latest.date) : [];
   db.close();
 
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Fane — Market Intelligence</title>
-      <meta charset="utf-8"/>
-      <meta name="viewport" content="width=device-width, initial-scale=1"/>
-      <style>
-        body { font-family: sans-serif; max-width: 780px; margin: 40px auto; padding: 0 20px; color: #333; background: #fafafa; }
-        h1 { font-size: 24px; color: #111; }
-        .meta { color: #888; font-size: 14px; margin-bottom: 24px; }
-        .briefing { white-space: pre-wrap; line-height: 1.7; background: #fff; padding: 24px; border-radius: 8px; border: 1px solid #eee; }
-        .stats { display: flex; gap: 16px; margin-bottom: 24px; }
-        .stat { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 16px 20px; flex: 1; }
-        .stat-label { font-size: 12px; color: #888; margin-bottom: 4px; }
-        .stat-value { font-size: 22px; font-weight: 500; }
-        .footer { margin-top: 32px; font-size: 12px; color: #aaa; }
-        .history { margin-top: 32px; }
-        .history a { display: block; padding: 8px 0; color: #555; text-decoration: none; border-bottom: 1px solid #eee; }
-        .history a:hover { color: #111; }
-        ${annotationStyles()}
-      </style>
-    </head>
-    <body>
-      <h1>Fane Market Intelligence</h1>
-      ${latest ? `
-        <div class="meta">Briefing for ${latest.date}</div>
-        <div class="stats">
-          <div class="stat">
-            <div class="stat-label">S&amp;P 500</div>
-            <div class="stat-value">${latest.sp500_close?.toLocaleString()}</div>
-          </div>
-          <div class="stat">
-            <div class="stat-label">TSX</div>
-            <div class="stat-value">${latest.tsx_close?.toLocaleString()}</div>
-          </div>
-          <div class="stat">
-            <div class="stat-label">VIX</div>
-            <div class="stat-value">${latest.vix}</div>
-          </div>
-        </div>
-        <div class="briefing">${marked(latest.briefing_text || 'No briefing yet.')}</div>
-        ${renderAnnotationThread(annotations)}
-        ${annotationScript(latest.date, latest.briefing_text || '')}
-      ` : '<p>No briefings yet. Check back after 9am ET on a weekday.</p>'}
-      <div class="history">
-        <h3>Recent Briefings</h3>
-        ${snapshots.slice(1).map(s => `
-          <a href="/briefing/${s.date}">${s.date} — VIX ${s.vix}</a>
-        `).join('')}
+  const body = `
+    <h1>Fane Market Intelligence</h1>
+    ${latest ? `
+      <p class="meta">Briefing for ${latest.date}</p>
+      <div class="stat-row">
+        <div class="stat"><div class="stat-label">S&amp;P 500</div><div class="stat-value">${latest.sp500_close?.toLocaleString()}</div></div>
+        <div class="stat"><div class="stat-label">TSX</div><div class="stat-value">${latest.tsx_close?.toLocaleString()}</div></div>
+        <div class="stat"><div class="stat-label">VIX</div><div class="stat-value">${latest.vix}</div></div>
       </div>
-      <div class="footer">
-        Default recommendation is no action. Action requires documented justification. — Fane
-      </div>
-    </body>
-    </html>
-  `;
-  res.send(html);
+      <div class="briefing">${marked(latest.briefing_text || 'No briefing yet.')}</div>
+      ${renderAnnotationThread(annotations)}
+      ${annotationScript(latest.date, latest.briefing_text || '')}
+    ` : '<p>No briefings yet. Check back after 9am ET on a weekday.</p>'}
+    <div style="margin-top:32px;">
+      <h3 style="font-size:15px;color:#555;margin-bottom:12px;">Recent Briefings</h3>
+      ${snapshots.slice(1).map(s =>
+        `<a href="/briefing/${s.date}" style="display:block;padding:8px 0;color:#555;text-decoration:none;border-bottom:1px solid #eee;">${s.date} — VIX ${s.vix}</a>`
+      ).join('')}
+    </div>`;
+
+  res.send(pageShell('Market Intelligence', '/', body));
 });
 
 app.get('/briefing/:date', (req, res) => {
@@ -396,28 +525,13 @@ app.get('/briefing/:date', (req, res) => {
     return res.status(404).send('Briefing not found.');
   }
 
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Fane — ${snapshot.date}</title>
-      <meta charset="utf-8"/>
-      <style>
-        body { font-family: sans-serif; max-width: 780px; margin: 40px auto; padding: 0 20px; color: #333; background: #fafafa; }
-        .briefing { line-height: 1.7; background: #fff; padding: 24px; border-radius: 8px; border: 1px solid #eee; }
-        a { color: #555; }
-        ${annotationStyles()}
-      </style>
-    </head>
-    <body>
-      <p><a href="/">← Back</a></p>
-      <h2>${snapshot.date}</h2>
-      <div class="briefing">${marked(snapshot.briefing_text)}</div>
-      ${renderAnnotationThread(annotations)}
-      ${annotationScript(snapshot.date, snapshot.briefing_text || '')}
-    </body>
-    </html>
-  `);
+  const body = `
+    <h2>${snapshot.date}</h2>
+    <div class="briefing">${marked(snapshot.briefing_text)}</div>
+    ${renderAnnotationThread(annotations)}
+    ${annotationScript(snapshot.date, snapshot.briefing_text || '')}`;
+
+  res.send(pageShell(snapshot.date, '/', body));
 });
 
 // ── Annotation API ───────────────────────────────────────────────────────────
@@ -513,6 +627,574 @@ app.get('/annotations/:date', (req, res) => {
   db.close();
   res.json(annotations);
 });
+
+
+
+// ── GET /signals ──────────────────────────────────────────────────────────────
+//
+// Main decision page. Pending signals require explicit Approve or Pass.
+// Default is always Pass. Approve requires counter-argument, conviction,
+// and quantity — no approval without all three documented.
+ 
+app.get('/signals', (req, res) => {
+  const db = getDb();
+  const pending = db.prepare(`
+    SELECT * FROM signals WHERE status = 'pending' ORDER BY fired_at DESC
+  `).all();
+  const recent = db.prepare(`
+    SELECT * FROM signals WHERE status != 'pending'
+    ORDER BY acted_on_at DESC LIMIT 20
+  `).all();
+ 
+  // Fetch market context for pending signals
+  const contextMap = {};
+  for (const sig of pending) {
+    if (sig.market_snapshot_id) {
+      const snap = db.prepare(
+        `SELECT * FROM market_snapshots WHERE id = ?`
+      ).get(sig.market_snapshot_id);
+      if (snap) contextMap[sig.id] = snap;
+    }
+  }
+  db.close();
+ 
+  // ── Signal card (pending) ────────────────────────────────────────────────
+  function signalCard(sig) {
+    const snap      = contextMap[sig.id];
+    const dirBadge  = `<span class="badge ${sig.direction === 'BUY' ? 'badge-buy' : 'badge-sell'}">${escHtml(sig.direction || '—')}</span>`;
+ 
+    return `
+      <div class="card" id="signal-${sig.id}">
+ 
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <span style="font-size:20px;font-weight:700;color:#111;">${escHtml(sig.ticker)}</span>
+          ${dirBadge}
+          <span style="font-size:12px;color:#aaa;">${escHtml(sig.signal_type || '')}</span>
+          <span style="margin-left:auto;font-size:12px;color:#bbb;">${escHtml(sig.fired_at)}</span>
+        </div>
+ 
+        ${sig.trigger_reason ? `
+          <div style="font-size:13px;color:#444;margin-bottom:16px;padding:10px 12px;background:#f9f9f9;border-radius:5px;border-left:3px solid #ddd;">
+            <span style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:3px;">Why it fired</span>
+            ${escHtml(sig.trigger_reason)}
+          </div>` : ''}
+ 
+        ${snap ? `
+          <div style="font-size:12px;color:#999;margin-bottom:16px;">
+            Market context at signal time:
+            S&amp;P ${snap.sp500_close?.toLocaleString() ?? '—'} ·
+            TSX ${snap.tsx_close?.toLocaleString() ?? '—'} ·
+            VIX ${snap.vix ?? '—'} ·
+            <a href="/briefing/${snap.date}" style="color:#666;">see briefing →</a>
+          </div>` : ''}
+ 
+        <div style="border-top:1px solid #f0f0f0;padding-top:16px;">
+ 
+          <div style="margin-bottom:14px;">
+            <label>Counter-argument — why this signal might be wrong <span style="color:#b91c1c;">*</span></label>
+            <textarea id="ca-${sig.id}" rows="3"
+              placeholder="What is the bear case? Why could this be a false positive?">${escHtml(sig.counter_argument || '')}</textarea>
+          </div>
+ 
+          <div style="margin-bottom:14px;">
+            <label>Conviction <span style="color:#b91c1c;">*</span></label>
+            <div class="conviction-group">
+              ${['low', 'medium', 'high'].map(level => `
+                <div class="conviction-opt">
+                  <input type="radio" name="conv-${sig.id}" id="conv-${sig.id}-${level}" value="${level}">
+                  <label for="conv-${sig.id}-${level}">${level[0].toUpperCase() + level.slice(1)}</label>
+                </div>`).join('')}
+            </div>
+          </div>
+ 
+          <div style="margin-bottom:14px;">
+            <label>Shares <span style="color:#b91c1c;">*</span></label>
+            <input type="number" id="qty-${sig.id}" min="1" step="1"
+              placeholder="Number of shares" style="max-width:160px;">
+          </div>
+ 
+          <div style="margin-bottom:18px;">
+            <label>Note <span style="color:#bbb;font-weight:400;">(optional — what are you thinking?)</span></label>
+            <textarea id="note-${sig.id}" rows="2"></textarea>
+          </div>
+ 
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <button class="btn btn-pass" onclick="passSignal(${sig.id})">Pass — log inaction</button>
+              <span style="font-size:12px;color:#bbb;">← default</span>
+            </div>
+            <button class="btn btn-approve" onclick="approveSignal(${sig.id})">Approve →</button>
+          </div>
+ 
+          <div class="msg-ok"  id="ok-${sig.id}"></div>
+          <div class="msg-err" id="err-${sig.id}"></div>
+ 
+        </div>
+      </div>`;
+  }
+ 
+  // ── Recent decisions table ───────────────────────────────────────────────
+  function recentRow(sig) {
+    const dir = sig.direction || '—';
+    return `<tr>
+      <td style="font-weight:600;">${escHtml(sig.ticker)}</td>
+      <td><span class="badge ${dir === 'BUY' ? 'badge-buy' : 'badge-sell'}">${escHtml(dir)}</span></td>
+      <td><span class="badge badge-${sig.status}">${escHtml(sig.status)}</span></td>
+      <td style="font-size:12px;color:#999;">${escHtml(sig.acted_on_at || sig.fired_at || '—')}</td>
+      <td style="font-size:12px;color:#666;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+        ${escHtml(sig.human_note || '—')}
+      </td>
+    </tr>`;
+  }
+ 
+  const pendingSection = pending.length > 0
+    ? pending.map(signalCard).join('')
+    : `<div class="empty-state">
+         No pending signals.<br>
+         <span style="font-size:12px;">The default is no action.</span>
+       </div>`;
+ 
+  const recentSection = recent.length > 0 ? `
+    <p class="section-heading">Recent decisions</p>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table>
+        <thead><tr>
+          <th>Ticker</th><th>Dir</th><th>Status</th><th>Decided</th><th>Note</th>
+        </tr></thead>
+        <tbody>${recent.map(recentRow).join('')}</tbody>
+      </table>
+    </div>` : '';
+ 
+  const body = `
+    <h1>Signals</h1>
+    <p class="meta">${pending.length} pending · default is no action</p>
+    ${pendingSection}
+    ${recentSection}
+ 
+    <script>
+      async function approveSignal(id) {
+        const ca   = document.getElementById('ca-'   + id)?.value?.trim();
+        const conv = document.querySelector('input[name="conv-' + id + '"]:checked')?.value;
+        const qty  = parseFloat(document.getElementById('qty-'  + id)?.value);
+        const note = document.getElementById('note-' + id)?.value?.trim();
+ 
+        clearMsgs(id);
+        if (!ca)           return showErr(id, 'Counter-argument is required before approving.');
+        if (!conv)         return showErr(id, 'Conviction level is required.');
+        if (!qty || qty < 1) return showErr(id, 'Enter a valid share quantity.');
+ 
+        setLoading(id, true);
+        try {
+          const r = await fetch('/api/signals/' + id + '/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ counter_argument: ca, conviction_level: conv, quantity: qty, human_note: note })
+          });
+          const d = await r.json();
+          if (d.error) return showErr(id, d.error);
+          showOk(id, 'Approved. Order queued — check Trades for status.');
+          document.getElementById('signal-' + id).style.opacity = '0.5';
+          document.getElementById('signal-' + id).style.pointerEvents = 'none';
+        } catch {
+          showErr(id, 'Network error. Try again.');
+        } finally {
+          setLoading(id, false);
+        }
+      }
+ 
+      async function passSignal(id) {
+        const note = document.getElementById('note-' + id)?.value?.trim();
+        clearMsgs(id);
+        setLoading(id, true);
+        try {
+          const r = await fetch('/api/signals/' + id + '/pass', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ human_note: note })
+          });
+          const d = await r.json();
+          if (d.error) return showErr(id, d.error);
+          showOk(id, 'Passed. Inaction logged.');
+          document.getElementById('signal-' + id).style.opacity = '0.5';
+          document.getElementById('signal-' + id).style.pointerEvents = 'none';
+        } catch {
+          showErr(id, 'Network error. Try again.');
+        } finally {
+          setLoading(id, false);
+        }
+      }
+ 
+      function setLoading(id, on) {
+        document.querySelectorAll('#signal-' + id + ' .btn')
+          .forEach(b => b.disabled = on);
+      }
+      function clearMsgs(id) {
+        document.getElementById('ok-'  + id).style.display = 'none';
+        document.getElementById('err-' + id).style.display = 'none';
+      }
+      function showOk(id, msg) {
+        const el = document.getElementById('ok-' + id);
+        el.textContent = msg;
+        el.style.display = 'block';
+      }
+      function showErr(id, msg) {
+        const el = document.getElementById('err-' + id);
+        el.textContent = msg;
+        el.style.display = 'block';
+        setLoading(id, false);
+      }
+    </script>`;
+ 
+  res.send(pageShell('Signals', '/signals', body));
+});
+ 
+ 
+// ── GET /positions ────────────────────────────────────────────────────────────
+//
+// Fetches live from IB Gateway and persists the snapshot to DB.
+// Page blocks until IBKR responds (up to 15s timeout in account.js).
+// If IBKR is disconnected, renders a clear disconnected state.
+ 
+app.get('/positions', async (req, res) => {
+  if (!ibkr.isConnected) {
+    const body = `
+      <h1>Positions</h1>
+      <div class="card" style="text-align:center;padding:48px;">
+        <div style="font-size:14px;color:#888;margin-bottom:12px;">
+          IBKR not connected. IB Gateway may still be starting up.
+        </div>
+        <a href="/positions" style="font-size:13px;color:#555;">Refresh ↺</a>
+      </div>`;
+    return res.send(pageShell('Positions', '/positions', body));
+  }
+ 
+  let snapshot;
+  try {
+    snapshot = await getAccountSnapshot();
+    persistAccountSnapshot(snapshot);
+  } catch (err) {
+    console.error(`[${now()}] /positions fetch error:`, err.message);
+    const body = `
+      <h1>Positions</h1>
+      <div class="card" style="text-align:center;padding:48px;">
+        <div style="color:#b91c1c;font-size:14px;margin-bottom:12px;">
+          Failed to fetch from IB Gateway: ${escHtml(err.message)}
+        </div>
+        <a href="/positions" style="font-size:13px;color:#555;">Retry ↺</a>
+      </div>`;
+    return res.send(pageShell('Positions', '/positions', body));
+  }
+ 
+  const { positions, summary, fetchedAt } = snapshot;
+  const s = summary;
+ 
+  function fmt(val, dec = 2) {
+    if (val == null) return '—';
+    return Number(val).toLocaleString('en-US', {
+      minimumFractionDigits: dec,
+      maximumFractionDigits: dec
+    });
+  }
+ 
+  function pnlStyle(val) {
+    if (val == null) return '';
+    return `color:${val >= 0 ? '#1a7f3c' : '#b91c1c'};font-weight:600;`;
+  }
+ 
+  const summaryRow = `
+    <div class="stat-row">
+      <div class="stat">
+        <div class="stat-label">Net Liquidation</div>
+        <div class="stat-value">$${fmt(s.NetLiquidation?.value)}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Cash</div>
+        <div class="stat-value">$${fmt(s.TotalCashValue?.value)}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Buying Power</div>
+        <div class="stat-value">$${fmt(s.BuyingPower?.value)}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Unrealized P&amp;L</div>
+        <div class="stat-value" style="${pnlStyle(s.UnrealizedPnL?.value)}">
+          $${fmt(s.UnrealizedPnL?.value)}
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Realized P&amp;L</div>
+        <div class="stat-value" style="${pnlStyle(s.RealizedPnL?.value)}">
+          $${fmt(s.RealizedPnL?.value)}
+        </div>
+      </div>
+    </div>`;
+ 
+  const positionRows = positions.length > 0
+    ? positions.map(p => `
+        <tr>
+          <td style="font-weight:600;">${escHtml(p.symbol)}</td>
+          <td style="color:#888;font-size:12px;">${escHtml(p.secType || '')}</td>
+          <td>${p.position > 0 ? '+' : ''}${p.position}</td>
+          <td>$${fmt(p.avgCost)}</td>
+          <td style="font-size:12px;color:#888;">${escHtml(p.currency || '')}</td>
+          <td style="font-size:12px;color:#aaa;">${escHtml(p.exchange || '')}</td>
+        </tr>`).join('')
+    : `<tr><td colspan="6" style="text-align:center;color:#999;padding:28px 0;">No open positions.</td></tr>`;
+ 
+  const body = `
+    <h1>Positions</h1>
+    <p class="meta">Live from IB Gateway · fetched ${escHtml(fetchedAt)}</p>
+    ${summaryRow}
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table>
+        <thead><tr>
+          <th>Symbol</th><th>Type</th><th>Shares</th><th>Avg Cost</th><th>Currency</th><th>Exchange</th>
+        </tr></thead>
+        <tbody>${positionRows}</tbody>
+      </table>
+    </div>`;
+ 
+  res.send(pageShell('Positions', '/positions', body));
+});
+ 
+ 
+// ── GET /trades ───────────────────────────────────────────────────────────────
+//
+// Orders lifecycle (submitted through IBKR) + closed trades.
+// Read-only. Order submission is handled by orders.js (Step 5).
+ 
+app.get('/trades', (req, res) => {
+  const db = getDb();
+  const orders = db.prepare(`
+    SELECT o.* FROM orders o ORDER BY o.created_at DESC LIMIT 50
+  `).all();
+  const trades = db.prepare(`
+    SELECT * FROM trades ORDER BY entry_date DESC LIMIT 50
+  `).all();
+  db.close();
+ 
+  function orderRow(o) {
+    const dir = o.direction || '—';
+    return `<tr>
+      <td style="font-weight:600;">${escHtml(o.ticker)}</td>
+      <td><span class="badge ${dir === 'BUY' ? 'badge-buy' : 'badge-sell'}">${escHtml(dir)}</span></td>
+      <td>${o.quantity ?? '—'}</td>
+      <td style="font-size:12px;color:#888;">${escHtml(o.order_type || 'MKT')}</td>
+      <td><span class="badge badge-${o.status}">${escHtml(o.status)}</span></td>
+      <td>${o.filled_price != null ? '$' + Number(o.filled_price).toFixed(2) : '—'}</td>
+      <td style="font-size:12px;color:#999;">${escHtml(o.approved_at || o.created_at)}</td>
+    </tr>`;
+  }
+ 
+  function tradeRow(t) {
+    const dir = t.direction || '—';
+    return `<tr>
+      <td style="font-weight:600;">${escHtml(t.ticker)}</td>
+      <td><span class="badge ${dir === 'BUY' ? 'badge-buy' : 'badge-sell'}">${escHtml(dir)}</span></td>
+      <td>${t.position_size ?? '—'}</td>
+      <td>${t.entry_price != null ? '$' + Number(t.entry_price).toFixed(2) : '—'}</td>
+      <td>${t.exit_price  != null ? '$' + Number(t.exit_price).toFixed(2)  : '—'}</td>
+      <td style="${t.pnl != null ? (t.pnl >= 0 ? 'color:#1a7f3c;' : 'color:#b91c1c;') + 'font-weight:600;' : ''}">
+        ${t.pnl != null ? '$' + Number(t.pnl).toFixed(2) : '—'}
+      </td>
+      <td style="font-size:12px;color:#999;">${escHtml(t.entry_date || '—')}</td>
+    </tr>`;
+  }
+ 
+  const emptyRow = (cols, msg) =>
+    `<tr><td colspan="${cols}" style="text-align:center;color:#999;padding:28px 0;">${msg}</td></tr>`;
+ 
+  const body = `
+    <h1>Trades</h1>
+    <p class="meta">Orders and completed positions</p>
+ 
+    <h2>Orders</h2>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table>
+        <thead><tr>
+          <th>Ticker</th><th>Dir</th><th>Qty</th><th>Type</th><th>Status</th><th>Fill Price</th><th>Approved</th>
+        </tr></thead>
+        <tbody>
+          ${orders.length > 0 ? orders.map(orderRow).join('') : emptyRow(7, 'No orders yet.')}
+        </tbody>
+      </table>
+    </div>
+ 
+    <p class="section-heading">Closed trades</p>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table>
+        <thead><tr>
+          <th>Ticker</th><th>Dir</th><th>Size</th><th>Entry</th><th>Exit</th><th>P&amp;L</th><th>Date</th>
+        </tr></thead>
+        <tbody>
+          ${trades.length > 0 ? trades.map(tradeRow).join('') : emptyRow(7, 'No closed trades yet.')}
+        </tbody>
+      </table>
+    </div>`;
+ 
+  res.send(pageShell('Trades', '/trades', body));
+});
+ 
+ 
+// ── POST /api/signals/:id/approve ─────────────────────────────────────────────
+//
+// Human approves a signal. Creates an order row (status: pending).
+// Step 5 (orders.js) will pick up pending orders and submit them to IBKR.
+// Counter-argument is required — approval without it is rejected at the API level.
+ 
+app.post('/api/signals/:id/approve', (req, res) => {
+  const { counter_argument, conviction_level, quantity, human_note } = req.body;
+  const signalId = parseInt(req.params.id, 10);
+ 
+  // Validate — these checks mirror the UI validation and enforce at the API level
+  if (!counter_argument?.trim()) {
+    return res.status(400).json({ error: 'Counter-argument is required.' });
+  }
+  if (!['low', 'medium', 'high'].includes(conviction_level)) {
+    return res.status(400).json({ error: 'Conviction level must be low, medium, or high.' });
+  }
+  if (!quantity || Number(quantity) < 1) {
+    return res.status(400).json({ error: 'Quantity must be a positive number.' });
+  }
+ 
+  const db = getDb();
+  try {
+    const signal = db.prepare('SELECT * FROM signals WHERE id = ?').get(signalId);
+    if (!signal) {
+      return res.status(404).json({ error: 'Signal not found.' });
+    }
+    if (signal.status !== 'pending') {
+      return res.status(409).json({ error: `Signal is already ${signal.status}.` });
+    }
+ 
+    const approvedAt = now();
+ 
+    // Update signal record
+    db.prepare(`
+      UPDATE signals
+      SET status = 'approved', acted_on = 1, acted_on_at = ?,
+          counter_argument = ?, conviction_level = ?, human_note = ?
+      WHERE id = ?
+    `).run(
+      approvedAt,
+      counter_argument.trim(),
+      conviction_level,
+      human_note?.trim() || null,
+      signalId
+    );
+ 
+    // Create order record — status 'pending' until orders.js submits to IBKR
+    // counter_argument NOT NULL constraint enforced at the schema level (schema.js)
+    const result = db.prepare(`
+      INSERT INTO orders
+        (signal_id, ticker, direction, order_type, quantity,
+         counter_argument, conviction_level, human_note,
+         approved_at, status, created_at)
+      VALUES (?, ?, ?, 'MKT', ?, ?, ?, ?, ?, 'pending', ?)
+    `).run(
+      signalId,
+      signal.ticker,
+      signal.direction,
+      Number(quantity),
+      counter_argument.trim(),
+      conviction_level,
+      human_note?.trim() || null,
+      approvedAt,
+      now()
+    );
+ 
+    const orderId = result.lastInsertRowid;
+ 
+    // Inaction and action logged the same way — Principle 4
+    db.prepare(`
+      INSERT INTO agent_log (run_at, run_type, status, notes)
+      VALUES (?, 'signal_approval', 'approved', ?)
+    `).run(
+      now(),
+      `Signal ${signalId} approved — ${signal.ticker} ${signal.direction} x${quantity} — order ${orderId} queued`
+    );
+ 
+    // Submit to IBKR — non-blocking. The order row is already written.
+    // If submission fails, the error is logged and the order stays visible
+    // in /trades with status='error'. The human can investigate from there.
+    submitOrder(orderId).catch(err => {
+      console.error(`[${now()}] Approve: submitOrder failed for order ${orderId}:`, err.message);
+    });
+    
+    res.json({ success: true, order_id: orderId });
+  } catch (err) {
+    console.error(`[${now()}] /api/signals/${signalId}/approve error:`, err.message);
+    res.status(500).json({ error: 'Approval failed: ' + err.message });
+  } finally {
+    db.close();
+  }
+});
+ 
+ 
+// ── POST /api/signals/:id/pass ────────────────────────────────────────────────
+//
+// Human explicitly passes on a signal. Logged the same as approval (Principle 4).
+// No order is created. Inaction is a decision.
+ 
+app.post('/api/signals/:id/pass', (req, res) => {
+  const { human_note } = req.body;
+  const signalId = parseInt(req.params.id, 10);
+ 
+  const db = getDb();
+  try {
+    const signal = db.prepare('SELECT * FROM signals WHERE id = ?').get(signalId);
+    if (!signal) {
+      return res.status(404).json({ error: 'Signal not found.' });
+    }
+    if (signal.status !== 'pending') {
+      return res.status(409).json({ error: `Signal is already ${signal.status}.` });
+    }
+ 
+    const passedAt = now();
+ 
+    db.prepare(`
+      UPDATE signals
+      SET status = 'passed', acted_on = 0, acted_on_at = ?, human_note = ?
+      WHERE id = ?
+    `).run(passedAt, human_note?.trim() || null, signalId);
+ 
+    // Inaction logged same as action — Principle 4
+    db.prepare(`
+      INSERT INTO agent_log (run_at, run_type, status, notes)
+      VALUES (?, 'signal_approval', 'passed', ?)
+    `).run(
+      now(),
+      `Signal ${signalId} passed — ${signal.ticker} ${signal.direction} — inaction logged`
+    );
+ 
+    res.json({ success: true });
+  } catch (err) {
+    console.error(`[${now()}] /api/signals/${signalId}/pass error:`, err.message);
+    res.status(500).json({ error: 'Pass failed: ' + err.message });
+  } finally {
+    db.close();
+  }
+});
+ 
+ 
+// ── POST /api/kill ────────────────────────────────────────────────────────────
+//
+// Kill token endpoint. Requires a reason. Fires ibkr.kill(), which:
+//   - Disconnects from IB Gateway
+//   - Sets the killed flag (no reconnect this session)
+//   - Logs to agent_log
+//   - Emits 'killed' event to all listeners
+// Process restart required to restore connectivity.
+ 
+app.post('/api/kill', (req, res) => {
+  const { reason } = req.body;
+  if (!reason?.trim()) {
+    return res.status(400).json({ error: 'Kill reason is required.' });
+  }
+  ibkr.kill(reason.trim());
+  res.json({ success: true, killed_at: now() });
+});
+
 
 
 // Binds to all interfaces by design. Network-level protection is provided
