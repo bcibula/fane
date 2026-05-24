@@ -1,6 +1,11 @@
 # Sessions
 
 ## 2026-05-24
+What changed: Repo made public. SESSIONS.md restructured to lean format (what changed / open / next, latest at top) and caught up with three missing entries. PRINCIPLES.md updated — $(date) placeholders fixed to 2026-05-07, new insights added, VM references corrected to VPS. PROMPTS.md added to repo with both session prompts. Session close ritual established. VS Code git GUI walkthrough completed.
+Open: code 399 fix in orders.js attachFillListener, AAPL fill confirmation (expected Monday 9:30am ET)
+Next: confirm AAPL fill via journalctl -u fane.service and /trades, apply code 399 fix in orders.js, begin Stage 3 signal detection design
+
+## 2026-05-24
 What changed: Established SESSIONS.md as session handoff document with lean format (what changed / open / next). Caught up three missing session entries. PRINCIPLES.md $(date) placeholders flagged for fix. Repo confirmed clean for public access (no secrets in history, all via process.env).
 Open: code 399 fix in orders.js attachFillListener, AAPL fill confirmation, $(date) placeholders in PRINCIPLES.md, repo not yet made public
 Next: make repo public, apply code 399 fix in orders.js, confirm AAPL fill, begin Stage 3 signal detection design
