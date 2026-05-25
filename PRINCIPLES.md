@@ -66,6 +66,22 @@ No human provides a timestamp manually.
 No AI fabricates a timestamp.
 The VPS clock is the only authority.
 
+### 10. Documentation must be operationally close to behavior
+A principle that does not govern the system is not a principle.
+A curriculum that does not appear in the briefing is not a curriculum.
+A reading list that is not surfaced is not a reading list.
+
+Documented intent and system behavior must be mechanically connected,
+not held together by human memory. The fact that something is written
+down is not evidence that it influences anything.
+
+Implications:
+- Principles must be readable by the agents they govern (prompt injection)
+- Curriculum content must appear in the daily briefing
+- Reading list must surface recommendations regularly
+- Every documented commitment needs a mechanical path to influence
+
+
 ## Known Risk States
 
 ### Forward pressure bias
@@ -100,6 +116,14 @@ Mitigations:
 - If delta exceeds threshold — kill token fires automatically
 - Local time is never treated as ground truth alone
 
+### Documentation decay
+- Risk: principles, curriculum, and reference docs accumulate but stop influencing behavior
+- Mitigation: project file integration so docs are in every Claude session
+- Mitigation: daily briefing surfaces principles, Year 1 topics, reading recommendations
+- Mitigation: agent skill files inject relevant docs at runtime
+- Status: open — needs implementation in briefing layer and Stage 3 design
+
+
 ## Open Questions
 - What is the maximum number of concurrent paper trades?
 - How do we measure justification quality over time?
@@ -124,6 +148,7 @@ Mitigations:
 - 2026-05-22: AI infrastructure costs must be audited, not assumed. Default configs are not safe configs
 - 2026-05-23: Confident tokens look identical whether grounded or constructed — LLM confidence is not a signal of actual knowledge
 - 2026-05-24: SESSIONS.md is the session handoff document — one commit closes the loop
+- 2026-05-24: A principle that does not govern the system is not a principle — documentation must be mechanically connected to behavior
 
 ## Operational Notes
 
