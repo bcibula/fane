@@ -31,4 +31,4 @@ your understanding of the current state of Fane — what has been built,
 what is running, and what is next. Flag anything that seems outdated or
 unclear before we proceed.
 
-Repo: https://github.com/bcibula/fane
+Raw: https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/
