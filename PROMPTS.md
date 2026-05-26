@@ -26,9 +26,14 @@ We are wrapping up this chat. Please do three things:
 
 ## PROMPT 2 — Start of session
 
-Before we begin: please review your memory for this project and confirm
-your understanding of the current state of Fane — what has been built,
-what is running, and what is next. Flag anything that seems outdated or
-unclear before we proceed.
+Before we begin: please fetch SESSIONS.md from the Fane repo using the
+GitHub API and review it alongside your memory to confirm the current
+state of Fane — what has been built, what is running, and what is next.
+Flag anything that seems outdated or unclear before we proceed.
 
-Raw: https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/
+Fetch SESSIONS.md:
+  GET https://api.github.com/repos/bcibula/fane/contents/SESSIONS.md
+  Authorization: Bearer <GITHUB_TOKEN from ~/fane/.env>
+
+Repo base (for fetching other files):
+  https://api.github.com/repos/bcibula/fane/contents/
