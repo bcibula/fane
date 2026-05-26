@@ -1,4 +1,23 @@
 # Sessions
+## 2026-05-26
+**Changed**
+- Fixed briefing email failure: db/market.js expected flat named params (@sp500_close, @tsx_close, @vix) but market.js returns nested objects (snapshot.sp500.price) — explicit mapping added to saveMarketSnapshot()
+- GITHUB_TOKEN (read-only fine-grained PAT, public repos, no expiry set — calendar reminder needed for 2027-05-26) added to .env
+- PROMPTS.md updated to use GitHub API for SESSIONS.md fetch (raw.githubusercontent.com blocked by Claude network policy; api.github.com works)
+- PRINCIPLES.md: added principle — data shape changes must be traced to all consumers
+
+**Open**
+- AAPL BUY 1 fill expected 2026-05-27 09:30 ET (was PreSubmitted over Memorial Day weekend)
+- Code 399 fix in orders.js (confirmed already present per May 25 session)
+- DB fix: UPDATE orders SET status='submitted', error_code=NULL, error_message=NULL WHERE ibkr_order_id=1
+- Stage 3: signal detection (skills/signal-detection.md, flinch capture)
+- IBKR health check / Telegram alert for gateway disconnect
+- Briefing page left-margin alignment bug
+
+**Next**
+- Confirm AAPL fill and DB order record
+- Begin Stage 3: signal detection design
+
 
 ## 2026-05-25
 
