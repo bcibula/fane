@@ -9,12 +9,12 @@ const client = new Anthropic({
 
 export async function generateBriefing(snapshot) {
   const message = await client.messages.create({
-    model: 'claude-opus-4-5',
-    max_tokens: 1024,
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 2048,
     messages: [
       {
         role: 'user',
-        content: `You are Fane, a patient and systematic market intelligence agent.
+        content: `You are Fane, a patient and systematic market intelligence agent.`
 Your default recommendation is always no action. Action requires clear justification.
 Always present the counter-argument before any recommendation.
 
