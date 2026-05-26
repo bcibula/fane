@@ -1,5 +1,37 @@
 # Sessions
 
+## 2026-05-25
+
+**Changed**
+- IB Gateway diagnosed as disconnected — IBKR 2FA was blocking IBC auto-login after session expiry
+- Added VPS IP (62.238.13.86) and home network IP as trusted IPs in IBKR account management — gateway reconnected cleanly, no 2FA prompt
+- AAPL BUY 1 confirmed still alive in IBKR as PreSubmitted — markets closed today (Memorial Day), fill expected Tuesday 2026-05-27 at 9:30am ET
+- Code 399 fix confirmed already in orders.js (was flagged as pending in prior session, had been applied)
+- DB state of order 1 confirmed clean via sqlite3 (status=submitted, error_code=null, error_message=null)
+- Flagged IBKR health check (Telegram alert on disconnect) and password rotation monitoring as open items alongside Stage 3
+- Briefing quality diagnosed: 3 data points, 1024 tokens, generic prompt — produces identical output daily
+- Switched briefing model from claude-opus-4-5 to claude-haiku-4-5-20251001 (cost constraint: $5 API budget)
+- Bumped max_tokens from 1024 to 2048
+- Enriched market.js — 9 symbols (S&P 500, NASDAQ, TSX, VIX, 10yr yield, USD/CAD, oil, gold, AAPL) with price + change_pct
+- Rewrote briefing prompt — Canadian investor context, AAPL position, Phase 1 learner framing, 5-section structure (what happened / why it matters / one thing to learn / counter-argument / recommendation)
+- Discussed parallel learning gap: market mechanics vocabulary needed before Stage 3 signal detection design
+
+**Open**
+- AAPL fill confirmation Tuesday 2026-05-27 at 9:30am ET — verify fill price writes to orders table and appears in Closed Trades
+- IBKR health check — Telegram alert if gateway disconnected >few minutes (alongside Stage 3)
+- IBC password rotation monitoring — symptom: disconnected + "unrecognized username/password" in IBC log; fix: update IbPassword in /opt/ibc/config.ini, restart ibgateway
+- Stage 3 (signal detection + flinch capture) — deferred until Phase 1 market foundations established
+- Briefing page left-margin alignment bug
+- Migrate historical fane.db from old VM to VPS
+- Annotation cleanup (delete, highlight spans, short-text selection sensitivity)
+
+**Next**
+- Tuesday 9:30am ET: confirm AAPL fill — check /trades in Fane UI and sqlite3 trades table
+- Let new briefing run for a few weeks before further tuning
+- Continue Phase 1 reading — market mechanics vocabulary before Stage 3 design
+- Stage 3 design when Phase 1 foundations land
+
+
 ## 2026-05-24
 
 **Changed**
