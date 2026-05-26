@@ -3,18 +3,18 @@ import { now } from '../utils/time.js';
 
 export function saveMarketSnapshot(snapshot) {
   const db = getDb();
-  
   const stmt = db.prepare(`
-    INSERT OR REPLACE INTO market_snapshots 
+    INSERT OR REPLACE INTO market_snapshots
     (date, sp500_close, tsx_close, vix, created_at)
     VALUES (@date, @sp500_close, @tsx_close, @vix, @created_at)
   `);
-
   const result = stmt.run({
-    ...snapshot,
-    created_at: now()
+    date:       snapshot.date,
+    sp500_close: snapshot.sp500.price,
+    tsx_close:   snapshot.tsx.price,
+    vix:         snapshot.vix.price,
+    created_at:  now()
   });
-
   db.close();
   return result;
 }
