@@ -170,3 +170,14 @@ managed by ibgateway.service. Socket API on port 4002, paper trading, Read-Only 
 - 2026-05-23: Socket API port set via GUI (Configure→API→Settings), not jts.ini
 - 2026-05-23: SSH reverse tunnels on same port block Java from binding — check ss -tlnp with sudo
 - 2026-05-23: Use xdotool + scrot for headless GUI interaction on DISPLAY=:1
+
+### Data shape changes must be traced to all consumers
+When the shape of a data structure changes (nested vs flat, renamed keys,
+added or removed fields), every consumer of that structure must be updated
+in the same commit. A change to the producer that is not reflected in the
+consumer fails silently until runtime — and in Fane's case, that means a
+missed briefing with no alert.
+
+- 2026-05-26: market.js returned nested objects (sp500.price) but db/market.js
+  expected flat keys (@sp500_close). Briefing failed silently at 13:00 UTC.
+  Caught by journal log inspection. Fix: explicit mapping at the DB layer.
