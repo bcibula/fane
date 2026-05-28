@@ -1,4 +1,27 @@
 # Sessions
+## 2026-05-27
+
+### What changed
+- Annotation panel UX: removed auto-close, added "Saved ✓" state, "Annotate another passage →" reset link, closeBtn cleanup
+- Dark mode: CSS custom properties added to pageShell and annotationStyles — covers all styled components except inline nav/signal card styles
+- Claude Code installed and configured (v2.1.153, Pro, ~/fane)
+- CLAUDE.md created via /init — covers commands, architecture, data flows, critical constraints, infrastructure
+- PRINCIPLES.md: added "AI provider concentration" Known Risk State with four layers, two hard constraints, stateless prompts note
+- PRINCIPLES.md: insight log entry 2026-05-27 added
+- server copy.js deleted (temp file, origin unknown)
+
+### Open
+- server.js dark mode changes — committed? confirm
+- nav bar and signal card inline styles not covered by dark mode — follow-up pass
+- Confirm git add setting from accidentally selecting option 2 in Claude Code
+- IBKR code 399 fix still pending
+- Briefing page left-margin alignment bug
+- IBKR health check / Telegram alert on disconnect
+
+### Next
+- Start Claude Code fresh session for nav dark mode follow-up
+- Stage 3 signal detection work — skills/signal-detection.md
+
 ## 2026-05-26
 **Changed**
 - Fixed briefing email failure: db/market.js expected flat named params (@sp500_close, @tsx_close, @vix) but market.js returns nested objects (snapshot.sp500.price) — explicit mapping added to saveMarketSnapshot()
