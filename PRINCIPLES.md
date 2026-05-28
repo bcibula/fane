@@ -123,6 +123,22 @@ Mitigations:
 - Mitigation: agent skill files inject relevant docs at runtime
 - Status: open — needs implementation in briefing layer and Stage 3 design
 
+### AI provider concentration
+Fane depends on Anthropic at four layers:
+1. Briefing agent — `src/agent/briefing.js` (Claude Haiku, daily market briefing)
+2. Annotation responses — `src/web/server.js` (Claude Opus, inline Q&A on briefing text)
+3. OpenClaw orchestration — agent memory, identity, and session management
+4. Development tooling — Claude Code used to build and maintain Fane itself
+
+A single provider outage, pricing change, policy shift, or API deprecation affects all four simultaneously.
+
+Constraints:
+- Core logic (DB schema, order lifecycle, signal state machine, kill token) must remain AI-free and portable
+- AI must never touch the order execution path — signal approval writes to the DB; `orders.js` reads from the DB and submits to IBKR without any AI involvement
+- Prompts must be stateless and replaceable — no logic should live only inside a prompt
+
+- Status: open
+
 
 ## Open Questions
 - What is the maximum number of concurrent paper trades?
@@ -149,6 +165,7 @@ Mitigations:
 - 2026-05-23: Confident tokens look identical whether grounded or constructed — LLM confidence is not a signal of actual knowledge
 - 2026-05-24: SESSIONS.md is the session handoff document — one commit closes the loop
 - 2026-05-24: A principle that does not govern the system is not a principle — documentation must be mechanically connected to behavior
+- 2026-05-27: Anthropic dependency spans four layers simultaneously — briefing, annotation, orchestration, and tooling — concentration risk is real
 
 ## Operational Notes
 
