@@ -224,6 +224,13 @@ function annotationScript(briefingDate, briefingText) {
       closeBtn.addEventListener('click', () => {
         panel.style.display = 'none';
         selectedText = '';
+        noteEl.value = '';
+        responseEl.style.display = 'none';
+        responseEl.innerHTML = '';
+        submitBtn.textContent = 'Submit';
+        submitBtn.style.background = '';
+        submitBtn.disabled = false;
+        document.getElementById('ann-again')?.remove();
       });
 
       // Submit on Enter (without shift), allow shift+enter for newline
@@ -255,10 +262,31 @@ function annotationScript(briefingDate, briefingText) {
           });
           const data = await res.json();
           if (data.ai_response) {
-            responseEl.innerHTML = marked.parse(data.ai_response);  
+            responseEl.innerHTML = marked.parse(data.ai_response);
             responseEl.style.display = 'block';
-            // Append to thread on page without reload
             appendThread(selectedText, note, data.ai_response, 'just now');
+            submitBtn.textContent = 'Saved ✓';
+            submitBtn.style.background = '#1a7f3c';
+            spinner.style.display = 'none';
+            const againEl = document.createElement('div');
+            againEl.id = 'ann-again';
+            againEl.style.cssText = 'margin-top:10px;text-align:center;font-size:12px;';
+            againEl.innerHTML = '<a href="#" style="color:#888;text-decoration:none;">Annotate another passage →</a>';
+            againEl.addEventListener('click', (e) => {
+              e.preventDefault();
+              againEl.remove();
+              noteEl.value = '';
+              responseEl.style.display = 'none';
+              responseEl.innerHTML = '';
+              submitBtn.textContent = 'Submit';
+              submitBtn.style.background = '';
+              submitBtn.disabled = false;
+              selectedText = '';
+              quotedEl.textContent = '';
+              panel.style.display = 'none';
+            });
+            responseEl.insertAdjacentElement('afterend', againEl);
+            return;
           } else {
             responseEl.innerHTML = 'Error: ' + (data.error || 'Unknown error');
             responseEl.style.display = 'block';
