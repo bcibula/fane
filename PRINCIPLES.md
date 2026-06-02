@@ -198,3 +198,5 @@ missed briefing with no alert.
 - 2026-05-26: market.js returned nested objects (sp500.price) but db/market.js
   expected flat keys (@sp500_close). Briefing failed silently at 13:00 UTC.
   Caught by journal log inspection. Fix: explicit mapping at the DB layer.
+
+- 2026-06-01: Injected date in Claude's context is not verified and cannot be trusted for session records. A confidently stated wrong date silently corrupts the audit trail. The human confirms the date at session open. Claude never uses its injected date for records.
