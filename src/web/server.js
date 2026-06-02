@@ -26,19 +26,19 @@ ibkr.on('killed', ({ reason }) =>
 function annotationStyles() {
   return `
     .annotation-highlight {
-      background: #fff3cd;
-      border-bottom: 2px solid #f0a500;
+      background: var(--highlight-bg);
+      border-bottom: 2px solid var(--highlight-border);
       cursor: pointer;
       position: relative;
     }
-    .annotation-highlight:hover { background: #ffe9a0; }
+    .annotation-highlight:hover { background: var(--highlight-hover); }
 
     #ann-float-btn {
       display: none;
       position: fixed;
       z-index: 100;
-      background: #111;
-      color: #fff;
+      background: var(--btn-bg);
+      color: var(--btn-text);
       border: none;
       border-radius: 4px;
       padding: 5px 12px;
@@ -46,7 +46,7 @@ function annotationStyles() {
       cursor: pointer;
       box-shadow: 0 2px 8px rgba(0,0,0,0.18);
     }
-    #ann-float-btn:hover { background: #333; }
+    #ann-float-btn:hover { background: var(--btn-bg-hover); }
 
     #ann-panel {
       display: none;
@@ -54,22 +54,22 @@ function annotationStyles() {
       right: 24px;
       top: 80px;
       width: 360px;
-      background: #fff;
-      border: 1px solid #ddd;
+      background: var(--surface);
+      border: 1px solid var(--border-input);
       border-radius: 10px;
       box-shadow: 0 4px 24px rgba(0,0,0,0.13);
       z-index: 200;
       padding: 20px;
       font-size: 14px;
     }
-    #ann-panel h4 { margin: 0 0 10px 0; font-size: 15px; color: #111; }
+    #ann-panel h4 { margin: 0 0 10px 0; font-size: 15px; color: var(--text-strong); }
     #ann-quoted {
-      background: #f7f7f7;
-      border-left: 3px solid #f0a500;
+      background: var(--surface-inset);
+      border-left: 3px solid var(--highlight-border);
       padding: 8px 12px;
       margin-bottom: 12px;
       font-size: 13px;
-      color: #555;
+      color: var(--text-secondary);
       border-radius: 3px;
       max-height: 80px;
       overflow-y: auto;
@@ -78,19 +78,21 @@ function annotationStyles() {
     #ann-note {
       width: 100%;
       box-sizing: border-box;
-      border: 1px solid #ddd;
+      border: 1px solid var(--border-input);
       border-radius: 5px;
       padding: 8px;
       font-size: 14px;
       resize: vertical;
       min-height: 70px;
       font-family: inherit;
+      background: var(--surface);
+      color: var(--text);
     }
-    #ann-note:focus { outline: none; border-color: #aaa; }
+    #ann-note:focus { outline: none; border-color: var(--border-focus); }
     #ann-submit {
       margin-top: 10px;
-      background: #111;
-      color: #fff;
+      background: var(--btn-bg);
+      color: var(--btn-text);
       border: none;
       border-radius: 5px;
       padding: 8px 18px;
@@ -98,23 +100,23 @@ function annotationStyles() {
       cursor: pointer;
       width: 100%;
     }
-    #ann-submit:hover { background: #333; }
+    #ann-submit:hover { background: var(--btn-bg-hover); }
     #ann-submit:disabled { background: #aaa; cursor: not-allowed; }
     #ann-close {
       position: absolute;
       top: 12px; right: 14px;
       background: none; border: none;
-      font-size: 18px; cursor: pointer; color: #888;
+      font-size: 18px; cursor: pointer; color: var(--text-muted);
     }
-    #ann-close:hover { color: #111; }
+    #ann-close:hover { color: var(--text-strong); }
     #ann-response {
       margin-top: 14px;
-      background: #f0f7ff;
+      background: var(--surface-ai);
       border-radius: 6px;
       padding: 12px;
       font-size: 13px;
       line-height: 1.6;
-      color: #222;
+      color: var(--text);
       display: none;
       max-height: 260px;
       overflow-y: auto;
@@ -123,34 +125,34 @@ function annotationStyles() {
       display: none;
       margin-top: 10px;
       text-align: center;
-      color: #888;
+      color: var(--text-muted);
       font-size: 13px;
     }
 
     .ann-thread {
       margin-top: 32px;
-      border-top: 1px solid #eee;
+      border-top: 1px solid var(--border);
       padding-top: 20px;
     }
-    .ann-thread h3 { font-size: 15px; color: #555; margin-bottom: 16px; }
+    .ann-thread h3 { font-size: 15px; color: var(--text-secondary); margin-bottom: 16px; }
     .ann-item {
-      background: #fff;
-      border: 1px solid #eee;
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: 8px;
       padding: 14px 16px;
       margin-bottom: 14px;
     }
     .ann-item-quote {
       font-style: italic;
-      color: #888;
+      color: var(--text-muted);
       font-size: 12px;
-      border-left: 3px solid #f0a500;
+      border-left: 3px solid var(--highlight-border);
       padding-left: 8px;
       margin-bottom: 8px;
     }
     .ann-item-note { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
-    .ann-item-response { font-size: 13px; line-height: 1.6; color: #333; }
-    .ann-item-meta { font-size: 11px; color: #bbb; margin-top: 8px; }
+    .ann-item-response { font-size: 13px; line-height: 1.6; color: var(--text); }
+    .ann-item-meta { font-size: 11px; color: var(--text-faint); margin-top: 8px; }
   `;
 }
 
@@ -358,16 +360,16 @@ function navHtml(current = '') {
   ];
  
   const links = pages.map(([href, label]) =>
-    `<a href="${href}" style="color:${current===href?'#111':'#666'};font-weight:${current===href?'600':'400'};text-decoration:none;">${label}</a>`
+    `<a href="${href}" style="color:${current===href?'var(--text-strong)':'var(--text-dim)'};font-weight:${current===href?'600':'400'};text-decoration:none;">${label}</a>`
   ).join('');
- 
+
   return `
-    <nav style="display:flex;align-items:center;gap:20px;padding:12px 0;border-bottom:1px solid #eee;margin-bottom:28px;">
-      <span style="font-weight:700;color:#111;">Fane</span>
+    <nav style="display:flex;align-items:center;gap:20px;padding:12px 0;border-bottom:1px solid var(--border);margin-bottom:28px;">
+      <span style="font-weight:700;color:var(--text-strong);">Fane</span>
       ${links}
       <span style="margin-left:auto;display:flex;align-items:center;gap:8px;">
         <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};display:inline-block;"></span>
-        <span style="font-size:12px;color:#888;">IBKR: ${dotLabel}</span>
+        <span style="font-size:12px;color:var(--text-muted);">IBKR: ${dotLabel}</span>
         ${!killed
           ? `<button onclick="confirmKill()" style="margin-left:8px;border:1px solid #e53e3e;color:#e53e3e;background:none;border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer;">Kill</button>`
           : `<strong style="margin-left:8px;font-size:12px;color:#e53e3e;">KILL ACTIVE — restart required</strong>`
@@ -398,19 +400,73 @@ function pageShell(title, current, body) {
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <style>
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --surface-inset: #f7f7f7;
+      --surface-sunken: #f9f9f9;
+      --surface-hover: #f5f5f5;
+      --surface-ai: #f0f7ff;
+      --border: #eee;
+      --border-subtle: #f0f0f0;
+      --border-input: #ddd;
+      --border-focus: #aaa;
+      --text-strong: #111;
+      --text: #333;
+      --text-secondary: #555;
+      --text-dim: #666;
+      --text-muted: #888;
+      --text-subtle: #999;
+      --text-xfaint: #aaa;
+      --text-faint: #bbb;
+      --highlight-bg: #fff3cd;
+      --highlight-border: #f0a500;
+      --highlight-hover: #ffe9a0;
+      --btn-bg: #111;
+      --btn-bg-hover: #333;
+      --btn-text: #fff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111;
+        --surface: #1a1a1a;
+        --surface-inset: #222;
+        --surface-sunken: #222;
+        --surface-hover: #2a2a2a;
+        --surface-ai: #0d1a2e;
+        --border: #2a2a2a;
+        --border-subtle: #222;
+        --border-input: #333;
+        --border-focus: #666;
+        --text-strong: #f0f0f0;
+        --text: #ccc;
+        --text-secondary: #aaa;
+        --text-dim: #888;
+        --text-muted: #666;
+        --text-subtle: #555;
+        --text-xfaint: #555;
+        --text-faint: #444;
+        --highlight-bg: #2a2000;
+        --highlight-border: #b87800;
+        --highlight-hover: #3a2e00;
+        --btn-bg: #e0e0e0;
+        --btn-bg-hover: #c0c0c0;
+        --btn-text: #111;
+      }
+    }
     *, *::before, *::after { box-sizing: border-box; }
-    body { font-family: sans-serif; max-width: 820px; margin: 0 auto; padding: 20px 20px 60px; color: #333; background: #fafafa; }
-    h1 { font-size: 22px; color: #111; margin: 0 0 4px; }
-    h2 { font-size: 17px; color: #111; margin: 0 0 14px; }
-    .meta { color: #888; font-size: 13px; margin-bottom: 20px; }
-    .card { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 20px 24px; margin-bottom: 16px; }
+    body { font-family: sans-serif; max-width: 820px; margin: 0 auto; padding: 20px 20px 60px; color: var(--text); background: var(--bg); }
+    h1 { font-size: 22px; color: var(--text-strong); margin: 0 0 4px; }
+    h2 { font-size: 17px; color: var(--text-strong); margin: 0 0 14px; }
+    .meta { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px 24px; margin-bottom: 16px; }
     .stat-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
-    .stat { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 14px 18px; flex: 1; min-width: 110px; }
-    .stat-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; flex: 1; min-width: 110px; }
+    .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
     .stat-value { font-size: 20px; font-weight: 500; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    th { text-align: left; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 10px; border-bottom: 2px solid #eee; }
-    td { padding: 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+    th { text-align: left; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 10px; border-bottom: 2px solid var(--border); }
+    td { padding: 10px; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
     .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
     .badge-buy       { background: #e6f4ea; color: #1a7f3c; }
@@ -423,33 +479,33 @@ function pageShell(title, current, body) {
     .badge-cancelled { background: #f3f4f6; color: #6b7280; }
     .badge-error     { background: #fdecea; color: #b91c1c; }
     .badge-killed    { background: #fdecea; color: #b91c1c; }
-    label { display: block; font-size: 12px; color: #555; margin-bottom: 5px; font-weight: 600; }
+    label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; font-weight: 600; }
     textarea, input[type=number] {
-      width: 100%; border: 1px solid #ddd; border-radius: 5px; padding: 8px 10px;
-      font-size: 14px; font-family: inherit; resize: vertical; background: #fff;
+      width: 100%; border: 1px solid var(--border-input); border-radius: 5px; padding: 8px 10px;
+      font-size: 14px; font-family: inherit; resize: vertical; background: var(--surface); color: var(--text);
     }
-    textarea:focus, input:focus { outline: none; border-color: #999; }
+    textarea:focus, input:focus { outline: none; border-color: var(--border-focus); }
     .btn { display: inline-block; padding: 9px 20px; border-radius: 5px; font-size: 14px; cursor: pointer; border: none; font-family: inherit; font-weight: 500; }
     .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-    .btn-pass    { background: #111; color: #fff; }
-    .btn-pass:not(:disabled):hover    { background: #333; }
+    .btn-pass    { background: var(--btn-bg); color: var(--btn-text); }
+    .btn-pass:not(:disabled):hover    { background: var(--btn-bg-hover); }
     .btn-approve { background: #1a7f3c; color: #fff; }
     .btn-approve:not(:disabled):hover { background: #15652f; }
     .conviction-group { display: flex; gap: 8px; flex-wrap: wrap; }
     .conviction-opt input[type=radio] { display: none; }
     .conviction-opt label {
-      display: inline-block; padding: 6px 14px; border: 1px solid #ddd;
-      border-radius: 4px; cursor: pointer; font-size: 13px; color: #666; font-weight: 400;
+      display: inline-block; padding: 6px 14px; border: 1px solid var(--border-input);
+      border-radius: 4px; cursor: pointer; font-size: 13px; color: var(--text-dim); font-weight: 400;
     }
     .conviction-opt input[type=radio]:checked + label {
-      border-color: #111; color: #111; font-weight: 600; background: #f5f5f5;
+      border-color: var(--text-strong); color: var(--text-strong); font-weight: 600; background: var(--surface-hover);
     }
-    .section-heading { font-size: 12px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin: 28px 0 12px; border-top: 1px solid #eee; padding-top: 20px; }
+    .section-heading { font-size: 12px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.5px; margin: 28px 0 12px; border-top: 1px solid var(--border); padding-top: 20px; }
     .msg-ok  { background: #e6f4ea; border: 1px solid #a7d7b3; color: #1a7f3c; padding: 10px 14px; border-radius: 6px; font-size: 14px; margin-top: 12px; display: none; }
     .msg-err { background: #fdecea; border: 1px solid #f5c6c6; color: #b91c1c; padding: 10px 14px; border-radius: 6px; font-size: 14px; margin-top: 12px; display: none; }
-    .empty-state { color: #888; font-size: 14px; text-align: center; padding: 40px 0; line-height: 2; }
-    .footer { margin-top: 40px; font-size: 12px; color: #bbb; }
-    .briefing { line-height: 1.7; background: #fff; padding: 24px; border-radius: 8px; border: 1px solid #eee; }
+    .empty-state { color: var(--text-muted); font-size: 14px; text-align: center; padding: 40px 0; line-height: 2; }
+    .footer { margin-top: 40px; font-size: 12px; color: var(--text-faint); }
+    .briefing { line-height: 1.7; background: var(--surface); padding: 24px; border-radius: 8px; border: 1px solid var(--border); }
     ${annotationStyles()}
   </style>
 </head>
@@ -695,28 +751,28 @@ app.get('/signals', (req, res) => {
       <div class="card" id="signal-${sig.id}">
  
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-          <span style="font-size:20px;font-weight:700;color:#111;">${escHtml(sig.ticker)}</span>
+          <span style="font-size:20px;font-weight:700;color:var(--text-strong);">${escHtml(sig.ticker)}</span>
           ${dirBadge}
-          <span style="font-size:12px;color:#aaa;">${escHtml(sig.signal_type || '')}</span>
-          <span style="margin-left:auto;font-size:12px;color:#bbb;">${escHtml(sig.fired_at)}</span>
+          <span style="font-size:12px;color:var(--text-xfaint);">${escHtml(sig.signal_type || '')}</span>
+          <span style="margin-left:auto;font-size:12px;color:var(--text-faint);">${escHtml(sig.fired_at)}</span>
         </div>
- 
+
         ${sig.trigger_reason ? `
-          <div style="font-size:13px;color:#444;margin-bottom:16px;padding:10px 12px;background:#f9f9f9;border-radius:5px;border-left:3px solid #ddd;">
-            <span style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:3px;">Why it fired</span>
+          <div style="font-size:13px;color:var(--text);margin-bottom:16px;padding:10px 12px;background:var(--surface-sunken);border-radius:5px;border-left:3px solid var(--border-input);">
+            <span style="font-size:11px;color:var(--text-subtle);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:3px;">Why it fired</span>
             ${escHtml(sig.trigger_reason)}
           </div>` : ''}
- 
+
         ${snap ? `
-          <div style="font-size:12px;color:#999;margin-bottom:16px;">
+          <div style="font-size:12px;color:var(--text-subtle);margin-bottom:16px;">
             Market context at signal time:
             S&amp;P ${snap.sp500_close?.toLocaleString() ?? '—'} ·
             TSX ${snap.tsx_close?.toLocaleString() ?? '—'} ·
             VIX ${snap.vix ?? '—'} ·
-            <a href="/briefing/${snap.date}" style="color:#666;">see briefing →</a>
+            <a href="/briefing/${snap.date}" style="color:var(--text-dim);">see briefing →</a>
           </div>` : ''}
- 
-        <div style="border-top:1px solid #f0f0f0;padding-top:16px;">
+
+        <div style="border-top:1px solid var(--border-subtle);padding-top:16px;">
  
           <div style="margin-bottom:14px;">
             <label>Counter-argument — why this signal might be wrong <span style="color:#b91c1c;">*</span></label>
@@ -742,14 +798,14 @@ app.get('/signals', (req, res) => {
           </div>
  
           <div style="margin-bottom:18px;">
-            <label>Note <span style="color:#bbb;font-weight:400;">(optional — what are you thinking?)</span></label>
+            <label>Note <span style="color:var(--text-faint);font-weight:400;">(optional — what are you thinking?)</span></label>
             <textarea id="note-${sig.id}" rows="2"></textarea>
           </div>
  
           <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
             <div style="display:flex;align-items:center;gap:10px;">
               <button class="btn btn-pass" onclick="passSignal(${sig.id})">Pass — log inaction</button>
-              <span style="font-size:12px;color:#bbb;">← default</span>
+              <span style="font-size:12px;color:var(--text-faint);">← default</span>
             </div>
             <button class="btn btn-approve" onclick="approveSignal(${sig.id})">Approve →</button>
           </div>
@@ -768,8 +824,8 @@ app.get('/signals', (req, res) => {
       <td style="font-weight:600;">${escHtml(sig.ticker)}</td>
       <td><span class="badge ${dir === 'BUY' ? 'badge-buy' : 'badge-sell'}">${escHtml(dir)}</span></td>
       <td><span class="badge badge-${sig.status}">${escHtml(sig.status)}</span></td>
-      <td style="font-size:12px;color:#999;">${escHtml(sig.acted_on_at || sig.fired_at || '—')}</td>
-      <td style="font-size:12px;color:#666;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+      <td style="font-size:12px;color:var(--text-subtle);">${escHtml(sig.acted_on_at || sig.fired_at || '—')}</td>
+      <td style="font-size:12px;color:var(--text-dim);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
         ${escHtml(sig.human_note || '—')}
       </td>
     </tr>`;
