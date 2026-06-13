@@ -1,5 +1,26 @@
 # Sessions
 
+## 2026-06-12
+
+**What changed:**
+- Diagnosed and fixed iOS Safari annotation bug: float "Annotate" button
+  only listened for `mouseup`, which doesn't fire on touch text selection.
+  Claude Code added a `selectionchange`-based trigger (debounced ~150-200ms),
+  shared selection-check logic between both events. Confirmed working on
+  iPhone Safari after `sudo systemctl restart fane` + hard reload.
+
+**Open:**
+- (carry forward) Move "View full briefing online" link to top of email
+- (carry forward) Code 399 fix in orders.js attachFillListener
+- (carry forward) Briefing page left-margin alignment bug
+- (carry forward) Dark mode migration to CSS custom properties
+- (carry forward) IBKR health check / Telegram alert on disconnect
+- (carry forward) Annotations page build — pending Stage 3 + schema verification
+
+**Next:**
+- Stage 3 signal detection prep — not yet open per Brad's confirmation.
+  Continue Phase 1 markets/AI/plumbing curriculum work.
+
 
 ## 2026-06-01
 
