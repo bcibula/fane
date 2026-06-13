@@ -190,10 +190,11 @@ function annotationScript(briefingDate, briefingText) {
       const spinner    = document.getElementById('ann-spinner');
       const responseEl = document.getElementById('ann-response');
 
-      // Show float button on text selection inside .briefing
-      document.addEventListener('mouseup', (e) => {
+      // Shared logic: check selection and show/position float button
+      function handleSelectionChange() {
         const sel = window.getSelection();
-        const text = sel ? sel.toString().trim() : '';
+        if (!sel || sel.isCollapsed) { floatBtn.style.display = 'none'; return; }
+        const text = sel.toString().trim();
         if (!text || text.length < 5) { floatBtn.style.display = 'none'; return; }
 
         // Only trigger if selection is inside .briefing
@@ -202,14 +203,24 @@ function annotationScript(briefingDate, briefingText) {
         const anchorNode = sel.anchorNode;
         const container = anchorNode?.nodeType === 3 ? anchorNode.parentElement : anchorNode;
         if (!container?.closest('.briefing')) { floatBtn.style.display = 'none'; return; }
-        
+
         selectedText = text;
         const range = sel.getRangeAt(0);
         const rect  = range.getBoundingClientRect();
         floatBtn.style.display = 'block';
         floatBtn.style.left = rect.left + 'px';
         floatBtn.style.top  = (rect.bottom + 6) + 'px';
-        
+      }
+
+      // Desktop: mouseup fires once after selection ends
+      document.addEventListener('mouseup', handleSelectionChange);
+
+      // Mobile (iOS Safari): selectionchange fires continuously during drag,
+      // so debounce to only act once the selection settles.
+      let selectionChangeTimer = null;
+      document.addEventListener('selectionchange', () => {
+        clearTimeout(selectionChangeTimer);
+        selectionChangeTimer = setTimeout(handleSelectionChange, 175);
       });
 
       floatBtn.addEventListener('click', () => {
