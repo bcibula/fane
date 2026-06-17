@@ -242,9 +242,10 @@ class IBKRConnection {
   _scheduleReconnect() {
     if (this._killed) return;
     if (this._reconnectCount >= MAX_RECONNECT_ATTEMPTS) {
-      const msg = `Reconnect limit reached (${MAX_RECONNECT_ATTEMPTS} attempts). Giving up.`;
+      const msg = `Reconnect limit reached (${MAX_RECONNECT_ATTEMPTS} attempts). Entering slow retry (every 5 min).`;
       console.error(`[${now()}] IBKR: ${msg}`);
       logToDb('error', msg);
+      this._scheduleSlowRetry();
       return;
     }
 
@@ -263,6 +264,20 @@ class IBKRConnection {
         this._createAndConnect();
       }
     }, delayMs);
+  }
+
+  _scheduleSlowRetry() {
+    if (this._killed || this._connected) return;
+    const SLOW_RETRY_MS = 5 * 60 * 1000; // 5 minutes
+    console.log(`[${now()}] IBKR: Slow retry scheduled in 5 min.`);
+    this._reconnectTimer = setTimeout(() => {
+      this._reconnectTimer = null;
+      if (!this._killed && !this._connected) {
+        console.log(`[${now()}] IBKR: Slow retry attempt — resetting reconnect count.`);
+        this._reconnectCount = 0;
+        this._createAndConnect();
+      }
+    }, SLOW_RETRY_MS);
   }
 
   _clearReconnectTimer() {
