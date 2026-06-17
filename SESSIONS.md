@@ -1,5 +1,35 @@
 # Sessions
 
+## 2026-06-17
+
+### What changed
+- Diagnosed IBKR disconnection: Fane had exhausted 10 reconnect attempts on
+  2026-06-13 when ibgateway was down; gave up permanently; gateway was healthy
+  but Fane never retried
+- Fixed by restarting fane.service — reconnected immediately
+- Fixed root cause in src/ibkr/connection.js: added _scheduleSlowRetry() —
+  after MAX_RECONNECT_ATTEMPTS exhausted, waits 5 min, resets count, resumes
+  normal backoff; timer stored in _reconnectTimer so kill/disconnect clear it
+- Committed: "ibkr: slow retry after reconnect limit"
+
+### Open
+- Code 399 fix in orders.js attachFillListener (after-hours queue warning must
+  not trigger onOrderError)
+- Briefing page left-margin alignment bug
+- Nav bar and signal card inline styles not migrated to CSS custom properties
+  (dark mode incomplete)
+- IBKR health check — Telegram alert if gateway disconnected for sustained period
+- Monitor for IBKR forced password rotation (IBC fails silently)
+- Annotations page build (pending Stage 3 + schema verification)
+- Move "View full briefing online" link to top of email (src/agent/email.js)
+- Working model dedicated session (post-CC review ritual, collaboration log, etc.)
+
+### Next
+- Stage 3: signal detection architecture
+  Start with skills/signal-detection.md — read it, discuss schema and flinch
+  capture design before any code
+  
+
 ## 2026-06-12
 
 **What changed:**
