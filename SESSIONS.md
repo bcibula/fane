@@ -1,5 +1,33 @@
 # Sessions
 
+2026-06-17
+What changed:
+
+Resolved staged-but-uncommitted SESSIONS.md from previous session — committed and pushed to clean state
+Built macro learning watchlist of 29 positions across 9 segments: Energy (SU, XOM, SLB), Defense (LMT, RTX, NOC), Financials (RY, JPM, GS), Gold (ABX, AEM, FNV), Agriculture (NTR, BG, DE), Consumer Staples (WMT, COST, L), Semiconductors (NVDA, TSM, INTC), Utilities (FTS, NEE, DUK), Healthcare (JNJ, WELL), Fixed Income (TLT, XBB), Commodities (TECK)
+Created insert_watchlist_signals.sh — bulk signal insert script, run on VPS
+Approved all 29 signals through Fane UI with counter-arguments, Low conviction, 10 shares each
+All 29 orders submitted to IBKR, queued for market open 2026-06-18 9:30 ET
+Canadian names (SU, RY, ABX, AEM, FNV, NTR, FTS, L, XBB, TECK) on TSX in CAD; all others on US exchanges in USD
+
+Open:
+
+Confirm 29 fills tomorrow after 9:30 ET — watch for error states on Canadian names
+Code 399 fix still pending — orders.js attachFillListener must not trigger onOrderError on 399
+OTEX + comparables + FAANG watchlist — deferred to next session
+WATCHLIST.md not yet created in repo — segment/macro thread mapping still undocumented
+(carry forward) Move "View full briefing online" link to top of email
+(carry forward) Briefing page left-margin alignment bug
+(carry forward) Dark mode migration to CSS custom properties for nav and signal cards
+(carry forward) IBKR health check / Telegram alert on disconnect
+(carry forward) Annotations page build — pending Stage 3 + schema verification
+
+Next:
+
+Confirm fills, then OTEX watchlist session
+Consider drafting WATCHLIST.md to formally document the macro lens mapping for each segment
+
+
 ## 2026-06-17
 
 ### What changed
