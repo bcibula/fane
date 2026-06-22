@@ -7,7 +7,15 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
 });
 
-export async function generateBriefing(snapshot) {
+export async function generateBriefing(snapshot, positions = [], recentBriefings = []) {
+  const positionsText = positions.length > 0
+    ? positions.map(p => `- ${p.symbol}: ${p.position} shares @ avg $${p.avg_cost}`).join('\n')
+    : 'No open positions.';
+
+  const recentTopicsText = recentBriefings.length > 0
+    ? recentBriefings.map((t, i) => `${i + 1}. ${t}`).join('\n')
+    : 'None yet.';
+
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 2048,
@@ -19,8 +27,13 @@ Your default is always no action. Action requires clear justification.
 Always present the counter-argument before any recommendation.
 
 The investor is Canadian, early in their market education, paper trading US equities.
-They hold one paper position: AAPL. Explain why things moved, not just that they did.
+Current paper positions:
+${positionsText}
+Explain why things moved, not just that they did.
 Use plain language. Define any term that a beginner might not know.
+
+These are the "one thing to learn" topics from the last 7 briefings — do not repeat any of them; pick a different concept present in today's data:
+${recentTopicsText}
 
 Generate a morning market briefing based on this data:
 
@@ -43,7 +56,7 @@ Currency and Commodities:
 
 Structure the briefing as:
 1. What happened — a plain English summary of the day's moves
-2. Why it matters to you — connect the data to the Canadian investor context and the AAPL position
+2. Why it matters to you — connect the data to the Canadian investor context and the current positions
 3. One thing to learn — pick one concept from today's data and explain it clearly
 4. The counter-argument — what this data might be getting wrong or what risk it is not showing
 5. Default recommendation: no action`
