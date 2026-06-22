@@ -1,5 +1,33 @@
 # Sessions
 
+## 2026-06-22
+
+### What changed
+- Fixed VS Code Remote SSH: was connecting to raw Hetzner IP (blocked by firewall);
+  updated Windows SSH config to route through Tailscale (100.105.182.112). Permanent fix.
+- Updated Hetzner firewall rule to current home IP (173.206.174.170) as true backup.
+- Diagnosed IBKR gateway login failure (stale session, not password rotation);
+  restarted ibgateway, Fane reconnected automatically.
+- Fixed briefing agent: positions were hardcoded as single AAPL entry;
+  now queries all 30 positions from DB at generation time.
+- Fixed briefing topic rotation: "one thing to learn" was VIX every day;
+  now passes last 7 briefing topics to prompt with explicit do-not-repeat instruction.
+
+### Open
+- extractLearnSection regex may not be extracting topics cleanly from markdown briefings;
+  monitor whether rotation holds over next few days
+- Briefing market data still AAPL-only; other 29 positions have no daily price feed
+- IBKR health check + Telegram alert on gateway disconnect (open from Stage 2.5)
+- Briefing page left-margin alignment bug
+- Nav bar and signal card inline styles not yet migrated to CSS custom properties
+- Code 399 fix in orders.js attachFillListener
+
+### Next
+- Monitor tomorrow's briefing for topic rotation correctness
+- Consider expanding market snapshot to cover more held symbols
+- Stage 3 design discussion when ready to open it
+
+
 2026-06-17
 What changed:
 
