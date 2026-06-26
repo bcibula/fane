@@ -65,6 +65,7 @@ class IBKRConnection {
     this._killed          = false;
     this._reconnectTimer  = null;
     this._reconnectCount  = 0;
+    this._heartbeatTimer  = null;
 
     // External subscribers wanting to know when connection state changes.
     // Key: event name ('connected' | 'disconnected' | 'killed')
@@ -100,17 +101,19 @@ class IBKRConnection {
    * after a manual disconnect (e.g. scheduled maintenance window).
    */
   disconnect() {
+    this._clearHeartbeat();
     this._clearReconnectTimer();
-    if (this._api) {
+    const api = this._api;
+    this._api = null;
+    this._connected = false;
+    if (api) {
       try {
-        this._api.disconnect();
+        api.disconnect();
       } catch (err) {
         // Disconnect on an already-broken socket can throw — that's fine.
         console.log(`[${now()}] IBKR: Disconnect threw (likely already down):`, err.message);
       }
     }
-    this._connected = false;
-    this._api = null;
   }
 
   /**
@@ -177,19 +180,24 @@ class IBKRConnection {
 
   _createAndConnect() {
     // Always start fresh — never reuse a disconnected instance.
-    this._api = new IBApi({ host: HOST, port: PORT, clientId: CLIENT_ID });
+    const api = new IBApi({ host: HOST, port: PORT, clientId: CLIENT_ID });
+    this._api = api;
 
     // ── connected ──
-    this._api.on(EventName.connected, () => {
+    api.on(EventName.connected, () => {
+      if (this._api !== api) return;
       this._connected   = true;
       this._reconnectCount = 0;
       console.log(`[${now()}] IBKR: Connected to IB Gateway at ${HOST}:${PORT}.`);
       logToDb('connected', `${HOST}:${PORT} clientId=${CLIENT_ID}`);
       this._emit('connected', { host: HOST, port: PORT, at: now() });
+      this._startHeartbeat(api);
     });
 
     // ── disconnected ──
-    this._api.on(EventName.disconnected, () => {
+    api.on(EventName.disconnected, () => {
+      this._clearHeartbeat();
+      if (this._api !== api) return;
       const wasConnected = this._connected;
       this._connected = false;
 
@@ -199,16 +207,14 @@ class IBKRConnection {
         this._emit('disconnected', { at: now() });
       }
 
-      // Don't reconnect if killed or if this was a deliberate disconnect()
-      // (deliberate: _api will have been nulled before this fires — but the
-      // event may fire after, so check the killed flag only).
       if (!this._killed) {
         this._scheduleReconnect();
       }
     });
 
     // ── error ──
-    this._api.on(EventName.error, (err, code, reqId) => {
+    api.on(EventName.error, (err, code, reqId) => {
+      if (this._api !== api) return;
       const msg = err?.message ?? String(err);
 
       // Informational — console only.
@@ -231,7 +237,7 @@ class IBKRConnection {
 
     // Initiate the connection.
     try {
-      this._api.connect();
+      api.connect();
     } catch (err) {
       console.error(`[${now()}] IBKR: connect() threw:`, err.message);
       logToDb('error', 'connect() threw on startup', err.message);
@@ -278,6 +284,28 @@ class IBKRConnection {
         this._createAndConnect();
       }
     }, SLOW_RETRY_MS);
+  }
+
+  _startHeartbeat(api) {
+    this._clearHeartbeat();
+    this._heartbeatTimer = setInterval(() => {
+      if (this._api !== api || !this._connected) {
+        this._clearHeartbeat();
+        return;
+      }
+      try {
+        api.reqCurrentTime();
+      } catch (err) {
+        console.log(`[${now()}] IBKR: Heartbeat reqCurrentTime failed:`, err.message);
+      }
+    }, 60_000);
+  }
+
+  _clearHeartbeat() {
+    if (this._heartbeatTimer) {
+      clearInterval(this._heartbeatTimer);
+      this._heartbeatTimer = null;
+    }
   }
 
   _clearReconnectTimer() {
