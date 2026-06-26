@@ -1,5 +1,35 @@
 # Sessions
 
+## 2026-06-26
+
+### What changed
+- Diagnosed recurring IBKR disconnects: two bugs in connection.js identified
+  and fixed via Claude Code
+- Bug 1 (generation guard): _createAndConnect() now captures `const api = new IBApi()`
+  as a local; every event handler starts with `if (this._api !== api) return` —
+  prevents stale old-instance disconnected events from poisoning new connections
+- Bug 2 (disconnect ordering): this._api nulled before api.disconnect() call,
+  so deliberate disconnects no longer trigger spurious reconnects
+- Added 60s heartbeat (reqCurrentTime) to keep IB Gateway from dropping idle connections
+- Committed: "ibkr: generation guard, disconnect ordering fix, 60s heartbeat"
+- Established working pattern: Claude Code for execution, Claude.ai chat for planning
+
+### Open
+- Gateway "UNRECOGNIZED USERNAME OR PASSWORD" dialog = stale IBC session, NOT
+  password rotation — restart ibgateway first, update config.ini only if restart fails
+- extractLearnSection regex: still unverified whether topic rotation is working cleanly
+- Market snapshot still AAPL-only; other 29 positions have no daily price feed
+- IBKR health check + Telegram alert on sustained gateway disconnect
+- Code 399 fix in orders.js attachFillListener
+- Briefing page left-margin alignment bug
+- Nav bar and signal card inline styles not yet migrated to CSS custom properties
+
+### Next
+- Verify briefing topic rotation by checking recent briefing_text in DB
+- Market snapshot expansion (29 positions without price data)
+- IBKR health check / Telegram alert
+
+
 ## 2026-06-22
 
 ### What changed
