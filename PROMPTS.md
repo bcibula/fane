@@ -31,14 +31,14 @@ Do not use the date injected into your context — it is not verified and
 cannot be trusted for session records. Wait for me to confirm the date.
 Use only my confirmed date for SESSIONS.md entries and all session records.
 
-Then fetch all project MD files via the GitHub API:
+Then fetch all project MD files via bash_tool curl — do not use web_fetch,
+do not use the GitHub API:
 
-  GET https://api.github.com/repos/bcibula/fane/contents/SESSIONS.md
-  GET https://api.github.com/repos/bcibula/fane/contents/PRINCIPLES.md
-  GET https://api.github.com/repos/bcibula/fane/contents/PROMPTS.md
-  GET https://api.github.com/repos/bcibula/fane/contents/YEAR1.md
-  GET https://api.github.com/repos/bcibula/fane/contents/READING.md
-  Authorization: Bearer <GITHUB_TOKEN from ~/fane/.env>
+  curl -s "https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/SESSIONS.md"
+  curl -s "https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/PRINCIPLES.md"
+  curl -s "https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/PROMPTS.md"
+  curl -s "https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/YEAR1.md"
+  curl -s "https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/READING.md"
 
 These files are the source of truth for project state, principles, working
 ritual, curriculum, and reading list. The mounted project files in Claude's
@@ -48,4 +48,5 @@ Then: confirm your understanding of the current state of Fane — what has
 been built, what is running, and what is next. Flag anything that seems
 outdated or unclear before we proceed.
 
-Raw: https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/
+Raw base: https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/
+
