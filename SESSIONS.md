@@ -1,5 +1,37 @@
 # Sessions
 
+## 2026-07-07
+
+### What changed
+- Diagnosed IBKR disconnect: IBC session failure showing "UNRECOGNIZED USERNAME OR PASSWORD"
+  dialog — not a password rotation. Manual `sudo systemctl restart ibgateway` recovers it.
+  Fane reconnected automatically on next slow retry cycle.
+- Built and installed fane-gateway-watchdog: systemd timer running every 5 minutes,
+  checks if port 4002 is listening, restarts ibgateway.service if not.
+- Watchdog sends Telegram notification on action (success or failure) with EST timestamp.
+  Silent when gateway is healthy — logs and notifies only on restart.
+- Source files in ~/fane/infra/ (watchdog script, service unit, timer unit, install script).
+  Installed via `sudo bash ~/fane/infra/install-watchdog.sh`.
+- Tested end-to-end: manual stop of ibgateway → watchdog fired → restart → Telegram confirmed.
+
+### Open
+- Watchdog port check does not verify IBC is logged in — gateway could be listening
+  but stuck on auth dialog (port 4002 up but API not accessible)
+- fane.service has no auto-restart on failure — add Restart=on-failure to service unit
+- Briefing timer failure is silent — no alert if briefing generation fails
+- IBKR session read-only state undetected — connected and heartbeating but orders rejected
+- extractLearnSection regex unverified — topic rotation may not extract cleanly
+- Market snapshot AAPL-only — 29 positions have no daily price feed
+- Code 399 fix in orders.js attachFillListener
+- Briefing page left-margin alignment bug
+- Nav bar and signal card inline styles not migrated to CSS custom properties
+
+### Next
+- Add Restart=on-failure to fane.service unit (small, low-risk, high value)
+- Verify topic rotation by checking recent briefing_text in DB
+- Market snapshot expansion (29 positions without price data)
+
+
 ## 2026-06-26
 
 ### What changed
