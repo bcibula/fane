@@ -9,7 +9,7 @@ PORT=4002
 ENV_FILE="/home/brad/fane/.env"
 
 timestamp() {
-  date -u +"%Y-%m-%dT%H:%M:%SZ"
+  TZ="America/Toronto" date +"%Y-%m-%d %-I:%M%P"
 }
 
 send_telegram() {
