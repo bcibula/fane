@@ -1,0 +1,7 @@
+[Unit]
+Description=Fane IB Gateway watchdog
+After=ibgateway.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/fane-gateway-watchdog.sh
