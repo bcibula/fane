@@ -81,6 +81,19 @@ Implications:
 - Reading list must surface recommendations regularly
 - Every documented commitment needs a mechanical path to influence
 
+### 11. Automatic recovery without notification is incomplete
+A system that recovers silently has not recovered — it has hidden the failure.
+Every automatic intervention must be reported: what failed, what was done,
+and whether it succeeded. The notification is the audit trail for the recovery,
+not a substitute for it.
+
+Detect the failure close to the source. Recover automatically where possible.
+Report every time action is taken. These three layers are only robust together.
+
+Implications:
+- Watchdogs must notify on every restart attempt, success or failure
+- Silent auto-recovery creates false confidence in system health
+- The log and the notification are both required — one for machines, one for humans
 
 ## Known Risk States
 
@@ -166,6 +179,7 @@ Constraints:
 - 2026-05-24: SESSIONS.md is the session handoff document — one commit closes the loop
 - 2026-05-24: A principle that does not govern the system is not a principle — documentation must be mechanically connected to behavior
 - 2026-05-27: Anthropic dependency spans four layers simultaneously — briefing, annotation, orchestration, and tooling — concentration risk is real
+- 2026-07-06: Silent auto-recovery is deceptive — a system that fixes itself without reporting has hidden the failure, not resolved it. Notification is load-bearing, not optional.
 
 ## Operational Notes
 

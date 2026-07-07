@@ -1,6 +1,6 @@
 # Sessions
 
-## 2026-07-07
+## 2026-07-06
 
 ### What changed
 - Diagnosed IBKR disconnect: IBC session failure showing "UNRECOGNIZED USERNAME OR PASSWORD"
