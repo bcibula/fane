@@ -237,8 +237,8 @@ function attachFillListener(api) {
     if (reqId == null || reqId < 0) return;    // not order-scoped
     if (code === 399) {
       console.log(`[${now()}] Orders: warning [399] for order ${reqId} (order queued, not rejected): ${err?.message ?? err}`);
-      return;
-}
+    return;
+  }
 
     const msg = err?.message ?? String(err);
     console.error(`[${now()}] Orders: IBKR error [${code}] for order ${reqId}: ${msg}`);
