@@ -233,8 +233,8 @@ function attachFillListener(api) {
 
   // Order-scoped errors arrive via the main error event with the order ID as reqId.
   api.on(EventName.error, (err, code, reqId) => {
-    if (code >= 1000) return;  // informational — ignore
-    if (reqId == null || reqId < 0) return;  // not order-scoped
+    if (code >= 1100 && code <= 2999) return;  // system/connectivity notifications — ignore
+    if (reqId == null || reqId < 0) return;    // not order-scoped
     if (code === 399) {
       console.log(`[${now()}] Orders: warning [399] for order ${reqId} (order queued, not rejected): ${err?.message ?? err}`);
       return;
