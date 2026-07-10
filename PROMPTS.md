@@ -18,9 +18,19 @@ We are wrapping up this chat. Please do three things:
    something principle-worthy surfaced this session.
 
 3. **Generate a next-chat prompt** — write a complete context prompt I
-   can paste into a new chat to continue the project. Include: current
-   infrastructure state, what was completed this session, all known open
-   items, and exactly where to start next.
+   can paste into a new chat to continue the project, in this exact format:
+
+   Use PROMPT 2 from PROMPTS.md to open this session, then load this context:
+
+   Fane session — [DATE]
+
+   Completed this session:
+   - [what changed]
+
+   Open items:
+   - [full list]
+
+   Where to start: [one line]
 
 ---
 

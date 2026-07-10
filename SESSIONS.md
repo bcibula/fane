@@ -1,5 +1,45 @@
 # Sessions
 
+
+## 2026-07-09
+
+### What changed
+- Diagnosed recurring session-open fetch failure: web_fetch permanently blocked
+  for repo raw URLs (security guard requires URL in prior search results);
+  GitHub API rate-limited unauthenticated. Fix: bash_tool curl to
+  raw.githubusercontent.com — works reliably, no auth, no limits
+- PROMPTS.md restructured and pushed (a676a46): PROMPT 2 fetches via curl,
+  date confirmation restored, next-chat prompt reduced to lean format —
+  PROMPT 2 owns the ritual, next-chat prompt carries only session state,
+  the two can no longer drift
+- OneNote duplicate of prompts deleted — repo is sole authority
+- Track 2 session (deepest yet): flinch-fired-wrong specimen captured
+  (hesitation before deleting the stale OneNote copy — protecting the
+  liability, not the asset); Claude working model gained close-pressure,
+  topic-triggered register shift, first pushback (mechanism unresolved),
+  "a good mirror with a lag"
+- Recirculation gap named: records are write-optimized, read-neglected
+
+### Open
+- Write insight log entry to PRINCIPLES.md (drafted, below)
+- Restart=on-failure on fane.service — carried again, still first in queue
+- Review/recirculation ritual — undesigned
+- Hash-chained audit trail — evaluate at Stage 5
+- Watchdog doesn't verify IBC auth state (port up ≠ logged in)
+- Briefing timer failure silent — no alert on generation failure
+- IBKR read-only session state undetected
+- extractLearnSection regex unverified
+- Market snapshot AAPL-only — 29 positions without price feed
+- Code 399 fix in orders.js attachFillListener
+- Briefing page left-margin alignment bug
+- Nav/signal card inline styles → CSS custom properties
+- PRINCIPLES.md catch-up pass (dedicated session)
+
+### Next
+- Add Restart=on-failure to fane.service
+
+
+
 ## 2026-07-06
 
 ### What changed
