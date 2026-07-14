@@ -23,14 +23,21 @@ send_telegram() {
 }
 
 if ! ss -tlnp | grep -q ":${PORT}"; then
-  TS=$(timestamp)
-  echo "${TS} [watchdog] Port ${PORT} not listening. Restarting ibgateway.service." >> "$LOGFILE"
-
-  if systemctl restart ibgateway.service; then
-    echo "${TS} [watchdog] Restart succeeded." >> "$LOGFILE"
-    send_telegram "🟡 Fane watchdog: ibgateway was down, restarted successfully at ${TS}."
+  # Port is down — wait and recheck before acting
+  sleep 90
+  if ! ss -tlnp | grep -q ":${PORT}"; then
+    # Still down after 90s — genuine failure, restart
+    TS=$(timestamp)
+    echo "${TS} [watchdog] Port ${PORT} not listening after 90s grace. Restarting ibgateway.service." >> "$LOGFILE"
+    if systemctl restart ibgateway.service; then
+      echo "${TS} [watchdog] Restart succeeded." >> "$LOGFILE"
+      send_telegram "🟡 Fane watchdog: ibgateway was down, restarted successfully at ${TS}."
+    else
+      echo "${TS} [watchdog] Restart FAILED." >> "$LOGFILE"
+      send_telegram "🔴 Fane watchdog: ibgateway was down and restart FAILED at ${TS}. Manual intervention required."
+    fi
   else
-    echo "${TS} [watchdog] Restart FAILED." >> "$LOGFILE"
-    send_telegram "🔴 Fane watchdog: ibgateway was down and restart FAILED at ${TS}. Manual intervention required."
+    TS=$(timestamp)
+    echo "${TS} [watchdog] Port ${PORT} recovered within grace period — no action taken." >> "$LOGFILE"
   fi
 fi
