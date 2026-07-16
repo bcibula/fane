@@ -44,7 +44,7 @@ cd ~/fane && git add -A && git commit -m "session close" && git push
 
 **Before anything else: what is today's date?**
 Do not use the date injected into your context — it is not verified and
-cannot be trusted for session records. Wait for me to confirm the date.
+cannot be trusted for session records. Ask me for and Wait for me to confirm the current date.
 Use only my confirmed date for SESSIONS.md entries and all session records.
 
 Then fetch all project MD files via bash_tool curl — do not use web_fetch,
@@ -65,5 +65,6 @@ been built, what is running, and what is next. Flag anything that seems
 outdated or unclear before we proceed.
 
 Raw base: https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/
+
 
 <append Prompt from 1 above>
