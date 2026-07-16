@@ -1,5 +1,34 @@
 # Sessions
 
+## 2026-07-13
+
+### Completed
+- IBKR error code filter fixed: code >= 1000 → code >= 1100 && code <= 2999; 10000+ order errors now reach onOrderError (commit fec52ab)
+- Code 399 block indentation cleaned up
+- Restart=on-failure confirmed already present in fane.service — removed from open list
+- Briefing failure notifier: infra/briefing-failure-notify.sh + fane-briefing-failure.service + OnFailure= confirmed working via Telegram
+- Watchdog 90s grace period: IBKR ~3:50pm ET session reset identified as false-positive source; watchdog now waits before acting
+- sudoers entry for Claude Code: /etc/sudoers.d/claude-code (mode 0440)
+- IBKR read-only session state detection — parked, revisit pre-Stage 3
+- Anti-.md-creep rule and vocabulary gloss rule established
+- Morning question engine designed: retrieval-based, top of briefing, variable reward, 24hr curiosity gap
+- Market snapshot dynamic price feed designed: IBKR-first + DB fallback + position_prices table
+- Track 2 working model substantially expanded
+
+### Open
+- IBC auth-state watchdog gap (port 4002 up ≠ authenticated) — open, untouched
+- Market snapshot AAPL-only — design agreed, not executed
+- Morning question engine — designed, not built
+- extractLearnSection regex unverified
+- Briefing page left-margin alignment bug
+- Nav/signal card inline styles → CSS custom properties
+- Hash-chained audit trail — evaluate at Stage 5
+- PRINCIPLES.md catch-up pass — dedicated session needed
+
+### Next
+- Morning question engine implementation (top of queue)
+- Market snapshot dynamic price feed (Claude Code prompt ready)
+
 
 ## 2026-07-09
 

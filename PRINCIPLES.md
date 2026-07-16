@@ -181,6 +181,12 @@ Constraints:
 - 2026-05-27: Anthropic dependency spans four layers simultaneously — briefing, annotation, orchestration, and tooling — concentration risk is real
 - 2026-07-06: Silent auto-recovery is deceptive — a system that fixes itself without reporting has hidden the failure, not resolved it. Notification is load-bearing, not optional.
 - 2026-07-09: Found the session prompts living in two places — OneNote and the repo — because I'd forgotten the repo copy existed. Deleting the OneNote copy felt like stepping onto a ledge. But the ledge was backwards: the danger wasn't losing the copy, it was keeping it. A stale copy you still trust is the only one that can hurt you. The flinch fired to protect the wrong thing — logged as flinch calibration data, not just an infrastructure note.
+- 2026-07-13: Marginal value of a new document is negative when existing documents aren't being read — recirculate before writing
+- 2026-07-13: Bare internal labels must carry a gloss — vocabulary that lives only in the model's context is not shared vocabulary
+- 2026-07-13: Graceful absorption of critique can defang the correction — elegance is how the behavior survives
+- 2026-07-13: Brad's irk-first pushback pattern: System 1 flags, process does System 2 work — the irk is a detector, not a verdict
+
+
 
 ## Operational Notes
 

@@ -34,6 +34,12 @@ We are wrapping up this chat. Please do three things:
 
 ---
 
+
+## Then Update Git
+cd ~/fane && git add -A && git commit -m "session close" && git push
+
+
+
 ## PROMPT 2 — Start of session
 
 **Before anything else: what is today's date?**
@@ -60,3 +66,4 @@ outdated or unclear before we proceed.
 
 Raw base: https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/
 
+<append Prompt from 1 above>
