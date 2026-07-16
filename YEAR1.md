@@ -1,3 +1,6 @@
+> Source of truth: github.com/bcibula/fane — any mounted or copied
+> version is a stale snapshot. Fetch fresh per BOOTSTRAP.md.
+
 # Fane Year 1 — Learning Curriculum
 
 **Start: May 24, 2026**

@@ -1,3 +1,6 @@
+> Source of truth: github.com/bcibula/fane — any mounted or copied
+> version is a stale snapshot. Fetch fresh per BOOTSTRAP.md.
+
 # Prompts
 
 Standard prompts for Fane working sessions.
@@ -42,12 +45,13 @@ cd ~/fane && git add -A && git commit -m "session close" && git push
 
 ## PROMPT 2 — Start of session
 
-**Before anything else: what is today's date?**
-Do not use the date injected into your context — it is not verified and
-cannot be trusted for session records. Ask me for and Wait for me to confirm the current date.
-Use only my confirmed date for SESSIONS.md entries and all session records.
+**If today's date has not already been confirmed by Brad in this
+session, ask now and wait.** Use only Brad's confirmed date for
+SESSIONS.md entries and all session records. Never alter historical
+dates already present in repository content.
 
-Then fetch all project MD files via bash_tool curl — do not use web_fetch,
+If not already fetched this session per BOOTSTRAP.md, fetch all
+project MD files via bash_tool curl — do not use web_fetch,
 do not use the GitHub API:
 
   curl -s "https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/SESSIONS.md"

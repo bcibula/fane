@@ -1,3 +1,6 @@
+> Source of truth: github.com/bcibula/fane — any mounted or copied
+> version is a stale snapshot. Fetch fresh per BOOTSTRAP.md.
+
 # Fane Reading List
 
 A curated reading list for the Year 1 curriculum. Evolves over time —

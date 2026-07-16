@@ -23,14 +23,14 @@ export async function sendBriefingEmail(date, briefingText) {
     <div style="font-family: sans-serif; max-width: 680px; margin: 0 auto;">
       <h2 style="color: #333;">Fane Market Briefing</h2>
       <p style="color: #666;">Date: ${date}</p>
+      <p>
+        <a href="${webUrl}" style="color: #555;">View full briefing online →</a>
+      </p>
       <hr/>
       <div style="line-height: 1.7;">
         ${briefingHtml}
       </div>
       <hr/>
-      <p>
-        <a href="${webUrl}" style="color: #555;">View full briefing online →</a>
-      </p>
       <p style="color: #999; font-size: 12px;">
         Default recommendation is no action. Action requires documented justification. — Fane
       </p>
