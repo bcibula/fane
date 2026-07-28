@@ -3,6 +3,83 @@
 
 # Sessions
 
+## 2026-07-27
+
+### What changed
+- No code or config changes. Session was a ledger audit.
+- Six sessions occurred 2026-07-15 to 2026-07-17 with no SESSIONS.md entry
+  for any of them. Two produced committed repo changes: BOOTSTRAP.md created
+  and PROMPTS.md edited (07-16), and the "View full briefing online" link
+  moved to the top of the email in src/agent/email.js (07-16, verified
+  present at line 27). Both are in the repo. Neither was recorded.
+- Two independent leak paths identified:
+  (1) Items captured only in Claude memory, never written to the repo.
+  (2) Items present in earlier SESSIONS.md entries silently absent from
+      later open lists. An omission reads identically to a completion when
+      moving forward through the file. The 2026-07-13 open list carried 8
+      items; earlier entries carried 12-14, with no closures recorded for
+      the difference.
+- Open list below is reconstructed. Provenance marked where an item did not
+  come from the 2026-07-13 entry.
+- FIX/CTCI protocol deep dive: held in memory as a longer-horizon item,
+  unsourceable in repo or chat history, not recognized by Brad. Deleted.
+- Trial: run the deliberate-thinking layer on ChatGPT instead of Claude.ai
+  for an evaluation period. Claude Code remains the execution layer on the
+  VPS either way. Motivation is the AI provider concentration risk in
+  PRINCIPLES.md — four Anthropic layers to three — and a controlled
+  comparison of the two on the same work. Not a commitment. Revert is
+  free: the repo is the authority and nothing about Fane depends on which
+  tool does the thinking. Revisit at Stage 3 open or sooner if the
+  bootstrap can't be made reliable on ChatGPT.
+
+### Open
+
+Carried from 2026-07-13:
+- IBC auth-state watchdog gap (port 4002 up ≠ IBC authenticated)
+- Market snapshot dynamic price feed — designed, not executed
+- Morning question engine — designed, not built
+- extractLearnSection() regex unverified
+- Briefing page left-margin alignment bug
+- Nav/signal card inline styles → CSS custom properties
+- Hash-chained audit trail — evaluate at Stage 5
+- PRINCIPLES.md catch-up pass — dedicated session
+
+Recovered — in earlier entries, absent from 2026-07-13:
+- IBKR health check / Telegram alert on sustained gateway disconnect
+- IBKR forced password rotation monitoring (IBC fails login silently)
+- Annotations page build — pending Stage 3 + schema verification
+- Annotation markdown bug — escHtml instead of marked.parse in
+  renderAnnotationThread and appendThread
+- Annotation cleanup — delete, highlight spans, short-text selection
+- Annotation API model review — claude-opus-4-5
+- Working model dedicated session
+- OTEX + comparables + FAANG watchlist
+
+Recovered from memory — no repo record:
+- Position tracking page — current price and up/down from cost basis for
+  each of the 30 curriculum positions, plus aggregated portfolio total.
+  Own tab vs. integration with signals/portfolio/briefing — design pending.
+  (2026-07-17, re-confirmed 2026-07-27)
+- Annotation open-thread design — "Keep thinking about this" human flag;
+  briefing page is reading mode, annotations page is reflection mode.
+  SESSIONS.md records the decision was made; content is memory-only.
+- OpenClaw — how LLM humor works mechanically (Track 2)
+- Confidence calibration / tracing layer as a product concept
+
+Status unknown:
+- Email link change (07-16) — code present, live-briefing verification
+  never recorded
+
+Structural:
+- BOOTSTRAP.md specifies Claude-specific tooling (bash_tool curl,
+  prohibitions on web_fetch and the GitHub API). Does not port to another
+  tool. Needs restating so the requirement survives per-tool.
+- Nothing prevents open-list items from being dropped between entries.
+
+### Next
+- Decide whether the ledger gets a mechanical integrity check or whether
+  audit-on-suspicion stays the method.
+
 ## 2026-07-13
 
 ### Completed
