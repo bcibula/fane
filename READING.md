@@ -26,6 +26,18 @@ The conceptual ground Fane is built on.
   research task; flag any decent translation when encountered.
 - **`PRINCIPLES.md`** — Fane's own production philosophy
 - **`YEAR1.md`** — Year 1 curriculum (this list's companion)
+- **Thinking in Systems** — Donella Meadows
+  *A practical introduction to feedback loops, delays, leverage points,
+  and unintended consequences. Useful for understanding markets, AI-assisted
+  decisions, and Fane itself as parts of complex adaptive systems.*
+- **The Beginning of Infinity** — David Deutsch
+  *A study of explanation, knowledge creation, criticism, and error correction.
+  Relevant to Fane's treatment of uncertainty and its effort to improve
+  decisions without mistaking models for reality.*
+- **Seeing Like a State** — James C. Scott
+  *How institutions simplify complex reality into legible models, and how
+  those abstractions can fail. Relevant to markets, regulation, AI systems,
+  and the limits of centralized decision-making.*
 
 ---
 
@@ -49,6 +61,15 @@ The conceptual ground Fane is built on.
 - **The Bond Book** — Annette Thau
 - **Market Wizards** (series) — Jack Schwager
 - **Trading in the Zone** — Mark Douglas
+
+### Accounting and financial statements
+
+- **Financial Shenanigans** — Howard Schilit, Jeremy Perler, and Yoni Engelhart
+  *How companies manipulate financial reporting and investor perception.
+  A practical guide to recognizing earnings distortion and accounting warning signs.*
+- **Quality of Earnings** — Thornton O'glove
+  *How reported earnings can diverge from the underlying economics of a
+  business. Older examples, but a durable framework for examining earnings quality.*
 
 ### Canadian context
 
@@ -178,6 +199,9 @@ The lens for understanding why humans (and models) make the decisions they do.
 - **Antifragile** — Nassim Taleb
 - **Misbehaving** — Richard Thaler
   *Behavioral economics, written as memoir. Easier than Kahneman.*
+- **The Drunkard's Walk** — Leonard Mlodinow
+  *An accessible introduction to probability, randomness, regression to the
+  mean, and the human tendency to find patterns in noisy outcomes.*
 - **Descartes' Error** — Antonio Damasio
   *The somatic marker hypothesis — the neuroscience of the flinch.
   Critical reading for understanding what Stage 3 is actually capturing.*
