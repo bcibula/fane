@@ -3,6 +3,43 @@
 
 # Sessions
 
+## 2026-08-06
+
+### What changed
+- READING.md foundation improvements completed, committed, and pushed
+  (commit 0ae699e).
+- Uncommitted July 28 BOOTSTRAP.md and PROMPTS.md drafts investigated and
+  found unfinished and overly complex.
+- Those drafts preserved at
+  ~/fane-bootstrap-prompts-local-2026-08-06.patch; both working files
+  restored to the committed baseline.
+- BOOTSTRAP.md redesigned from first principles as a short,
+  tool-independent procedure for establishing a known-good session state.
+- PROMPT 2 is now the sole session entry point: confirms the date,
+  retrieves and executes the canonical BOOTSTRAP.md, then summarizes
+  current Fane state.
+- Removed: duplicated fetch instructions, Claude-specific bash_tool
+  requirements, circular PROMPT 2/BOOTSTRAP invocation, FANE_RAW_FETCH
+  speculation, and unnecessary protocol expansion.
+- Required bootstrap file set remains unconditional: BOOTSTRAP.md,
+  SESSIONS.md, PRINCIPLES.md, PROMPTS.md, YEAR1.md, and READING.md.
+- Bootstrap self-verification and fail-closed behaviour retained in
+  simplified form.
+
+### Open
+- Redesigned bootstrap not yet committed, pushed, or tested from a fresh
+  ChatGPT and Claude session.
+- PROMPT 1 intentionally left unchanged and not reviewed as part of this
+  redesign.
+
+### Next
+- Review the complete three-file diff.
+- Commit and push BOOTSTRAP.md, PROMPTS.md, and SESSIONS.md together.
+- Test PROMPT 2 from a fresh ChatGPT chat and a fresh Claude Code session
+  against the pushed canonical files.
+- Change the design again only in response to a demonstrated failure or
+  clear unnecessary complexity.
+
 ## 2026-07-27
 
 ### What changed

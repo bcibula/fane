@@ -45,30 +45,32 @@ cd ~/fane && git add -A && git commit -m "session close" && git push
 
 ## PROMPT 2 — Start of session
 
-**If today's date has not already been confirmed by Brad in this
-session, ask now and wait.** Use only Brad's confirmed date for
-SESSIONS.md entries and all session records. Never alter historical
-dates already present in repository content.
+Every new Fane chat begins with this prompt.
 
-If not already fetched this session per BOOTSTRAP.md, fetch all
-project MD files via bash_tool curl — do not use web_fetch,
-do not use the GitHub API:
+If today's date has not already been confirmed by Brad in this session,
+ask now and wait.
 
-  curl -s "https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/SESSIONS.md"
-  curl -s "https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/PRINCIPLES.md"
-  curl -s "https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/PROMPTS.md"
-  curl -s "https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/YEAR1.md"
-  curl -s "https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/READING.md"
+Use only Brad's confirmed date for new SESSIONS.md entries and session
+records. Never alter historical dates already present in repository
+content.
 
-These files are the source of truth for project state, principles, working
-ritual, curriculum, and reading list. The mounted project files in Claude's
-context may be stale — always fetch fresh from the repo.
+Retrieve the current BOOTSTRAP.md from the `main` branch of
+github.com/bcibula/fane and execute it.
 
-Then: confirm your understanding of the current state of Fane — what has
-been built, what is running, and what is next. Flag anything that seems
-outdated or unclear before we proceed.
+If bootstrap fails, stop.
 
-Raw base: https://raw.githubusercontent.com/bcibula/fane/refs/heads/main/
+After bootstrap succeeds, use only the files loaded and verified during
+the current session.
 
+Confirm your understanding of the current state of Fane:
 
-<append Prompt from 1 above>
+- what has been built
+- what is running
+- what is next
+- anything outdated, unclear, or inconsistent
+
+Then incorporate the handoff context appended below. Treat the handoff
+as supplemental context, not as authority when it conflicts with the
+repository.
+
+<append the previous session handoff here>

@@ -1,27 +1,48 @@
 # Fane Bootstrap
 
-Frozen file. It executes with instruction-level authority — changes
-require deliberate review and a SESSIONS.md log entry.
+This file establishes a known-good Fane session state. Changes require
+deliberate review and a SESSIONS.md entry.
 
-After Brad confirms the session date, fetch all live project files:
+## Canonical source
 
-    base=https://raw.githubusercontent.com/bcibula/fane/refs/heads/main
-    for f in SESSIONS.md PRINCIPLES.md PROMPTS.md YEAR1.md READING.md; do
-      curl -s "$base/$f" -o "/tmp/$f"
-    done
+The canonical repository is the `main` branch of:
 
-Rules:
-- bash_tool curl only. Never web_fetch (blocked for this repo). Never
-  the GitHub API (rate-limited).
-- After a recent push, raw.githubusercontent.com may serve cached
-  content for 1-2 minutes. Wait and re-fetch rather than assuming
-  the push failed.
-- Verify each fetch returned content, not an error page.
+    github.com/bcibula/fane
 
-On failure: report it and stop. Do not substitute memory, mounted
-files, or cached content. Brad may explicitly authorize a named
-alternative source; label all work based on it as provisional and
-re-verify against the repo once fetch succeeds.
+## Required files
 
-Then execute PROMPT 2 from the FETCHED PROMPTS.md — never a mounted
-or remembered copy.
+Retrieve the complete current contents of:
+
+    BOOTSTRAP.md
+    SESSIONS.md
+    PRINCIPLES.md
+    PROMPTS.md
+    YEAR1.md
+    READING.md
+
+Use any available method that returns the complete file contents from
+the canonical repository.
+
+## Verification
+
+Confirm that the BOOTSTRAP.md being executed is the freshly retrieved
+canonical copy.
+
+If execution began from another copy, compare it with the retrieved
+copy, ignoring only line-ending differences. Stop if they differ.
+
+Confirm that every required file was retrieved completely and is not an
+error page, login page, rendered HTML, rate-limit response, or truncated
+output.
+
+## Failure
+
+If retrieval or verification fails, report the exact failure and stop.
+
+Do not substitute memory, chat context, mounted files, search results,
+snippets, or cached copies.
+
+## Completion
+
+When bootstrap succeeds, report which files were loaded and return
+control to the start-of-session prompt.
