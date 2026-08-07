@@ -3,6 +3,140 @@
 
 # Sessions
 
+## 2026-08-07
+
+### What changed
+- Completed the full end-to-end session-protocol smoke test: PROMPT 1 in
+  ChatGPT, implementation through Claude Code, commit/push to canonical main,
+  then PROMPT 2 plus the generated handoff in a fresh ChatGPT session.
+  Bootstrap succeeded and correctly rejected an initially truncated
+  SESSIONS.md response before retrieving the complete file in bounded ranges.
+  The redesigned session protocol is now considered complete; do not redesign
+  it again unless a demonstrated failure appears.
+- Completed a read-only live VPS operational-state check. Core Fane,
+  ibgateway/IBC, Xvfb, watchdog, briefing timer, OpenClaw, database,
+  system clock, disk, memory, and repository state were inspected. Core
+  services were operational and the scheduled briefing pipeline was healthy.
+- The operational check exposed the previously documented IBKR false-positive
+  health gap in live use. The Positions page showed "IBKR: Connected" while
+  getPositions() timed out twice after 15 seconds waiting for positionEnd.
+  TCP remained ESTABLISHED, IBC showed an authenticated session, and no
+  disconnected/error event fired. Exact cause remains undetermined:
+  functional IBKR API non-response was observed, but transport state alone
+  did not prove usable API responsiveness.
+- Diagnosed the existing heartbeat in src/ibkr/connection.js: reqCurrentTime()
+  was issued every 60 seconds but its currentTime response was never checked,
+  so it functioned only as a keep-alive and could not detect a connected but
+  non-responsive IBKR API session.
+- Implemented response-verified IBKR API responsiveness detection. Transport
+  connection state remains separate from API response state. reqCurrentTime()
+  now requires currentTime within 10 seconds; apiResponseState reports
+  unknown/responsive/unresponsive. The UI now distinguishes KILLED,
+  Disconnected, Connected (API unverified), Connected (API unresponsive),
+  and Connected (API responsive). No automatic recovery or trading-policy
+  changes were added.
+- During review, found and fixed two stale-generation heartbeat bugs:
+  a disconnected event from a superseded IBApi instance and a stale heartbeat
+  tick could previously clear heartbeat state belonging to the current
+  connection. Generation checks now occur before shared heartbeat state can be
+  mutated.
+- Added focused automated coverage for the IBKR responsiveness detector and
+  stale-generation behavior. Final suite: 9/9 passing with fake IBApi objects;
+  no real IBKR connection or order operations are used by the tests.
+- A test-runner safety incident occurred during development. After two harmless
+  failed attempts using `node --test test/`, a diagnostic bare `node --test`
+  invoked Node's default test discovery and executed three existing
+  production-capable src/agent/test-* manual scripts. This generated one
+  Claude briefing, wrote/replaced the August 7 market_snapshots row, and sent
+  one real placeholder test email. No orders, signals, positions, trades, or
+  IBKR actions were affected.
+- The accidental database state required no manual repair. The normal
+  2026-08-07 13:00 UTC briefing run replaced the temporary snapshot naturally,
+  wrote a legitimate 6307-character briefing, logged daily_brief success,
+  exited 0/SUCCESS, and completed the normal email-send path.
+- Hardened test isolation after the incident: renamed
+  src/agent/test-briefing.js, test-email.js, and test-market.js to
+  manual-briefing.js, manual-email.js, and manual-market.js; package.json now
+  points `npm test` explicitly at test/ibkr-connection.test.js. SQLite
+  data/*.db-wal, data/*.db-shm, and data/*.db-journal runtime sidecars are now
+  ignored.
+- Deployed the responsiveness patch by restarting fane.service only. IB Gateway
+  and IBC were deliberately not restarted. Fane reconnected immediately.
+  After the first 60-second heartbeat, the live state became
+  "Connected (API responsive)" from a verified currentTime round trip and
+  remained responsive through the next heartbeat without steady-state log
+  noise.
+- Implementation committed and pushed as
+  223881cbdbe75df0beff9f4b950a6d99772ff272
+  ("ibkr: verify API responsiveness and harden test isolation").
+- OpenClaw filesystem permissions
+  (`agents.defaults.permissions.filesystem`) were verified from the live
+  configuration and are confirmed not applied, resolving the previous
+  "status unknown" wording.
+- The live OpenClaw gateway reports
+  `gateway.controlUi.allowInsecureAuth=true` as a security warning. No change
+  was made; a read-only security review remains appropriate before deciding
+  whether configuration should change.
+- The previously uncertain 2026-07-09 PRINCIPLES.md insight-log entry is
+  present in the canonical PRINCIPLES.md and is therefore no longer missing
+  or unverified.
+
+### Open
+- Stage 3 signal-detection architecture: design and implementation not started;
+  still deferred pending Phase 1 market foundations.
+- Original 2026-08-07 getPositions() timeout root cause remains undetermined.
+  Functional API responsiveness detection now exists, but the Positions
+  capability has not yet been re-tested after deployment.
+- The external gateway watchdog remains port-liveness based. Fane now detects
+  API unresponsiveness internally, but that signal is not yet integrated with
+  watchdog recovery or Telegram notification. Do not add automatic recovery
+  without a separate design decision.
+- IBKR read-only/trading-capability state detection remains separate from
+  general API responsiveness and is still parked for reconsideration before
+  Stage 3.
+- Dedicated monitoring for silent IBC authentication or forced-password-
+  rotation failures still does not exist.
+- Market snapshot dynamic price feed: designed but not implemented.
+- Morning question engine: designed but not implemented.
+- Verify extractLearnSection() topic extraction.
+- Complete the Stage 2.5 UI walkthrough of Signals, Positions, and Trades.
+- Fix the briefing-page left-margin alignment bug.
+- Migrate remaining navigation and signal-card inline styles to CSS custom
+  properties.
+- Complete the deferred dark-mode aesthetic pass for colours and fonts.
+- Evaluate a hash-chained audit trail at Stage 5.
+- Conduct a dedicated PRINCIPLES.md catch-up review.
+- Operationalize Principle 10 by mechanically surfacing principles, Year 1
+  topics, and reading recommendations in Fane.
+- Annotations page build remains pending Stage 3 and schema verification.
+- Fix annotation Markdown rendering in renderAnnotationThread and appendThread.
+- Complete annotation cleanup: deletion, highlight spans, and short-text
+  selection.
+- Review the annotation API model for cost and quality alignment.
+- Conduct a dedicated working-model review session.
+- Continue OTEX, comparable-company, and FAANG watchlist work.
+- Design and implement the position-tracking page.
+- Implement the previously decided annotation open-thread workflow.
+- Explore how LLM humour works mechanically as an OpenClaw Track 2 question.
+- Explore the confidence-calibration and tracing-layer product concept.
+- Verify in Brad's delivered inbox that the live briefing email contains the
+  moved "View full briefing online" link; code/template and successful send
+  path are verified, but rendered inbox content has not been directly checked.
+- Determine the status of migrating historical fane.db data from the old VM to
+  the VPS; current evidence remains suggestive but not conclusive.
+- Decide whether OpenClaw filesystem permissions should be applied now that
+  they are confirmed absent.
+- Investigate the OpenClaw
+  `gateway.controlUi.allowInsecureAuth=true` warning read-only before deciding
+  whether any configuration change is appropriate.
+
+### Next
+- Brad should load the normal Fane Positions page once after this deployment.
+  If it succeeds, record the August 7 getPositions incident as a transient
+  functional API non-response with exact cause unknown and return to Phase 1
+  Year 1 learning work. If it fails again, do not repeatedly retry; preserve
+  the API response-state and logs for diagnosis.
+
 ## 2026-08-06
 
 ### What changed
