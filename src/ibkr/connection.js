@@ -24,6 +24,25 @@
  *  - Codes < 1000: real errors. Written to agent_log.
  *  - Code 1100 (connectivity lost): triggers disconnect → reconnect path.
  *  - Code 1102 (connectivity restored): normal recovery, no action needed.
+ *
+ * Transport state vs. API responsiveness:
+ *  - `isConnected` reflects only the IBApi library's connected/disconnected
+ *    events — i.e. the socket session exists. It does NOT prove IB Gateway
+ *    is actually answering requests.
+ *  - `isApiResponsive` / `apiResponseState` reflect a response-verified
+ *    probe: every heartbeat tick issues reqCurrentTime() and requires the
+ *    `currentTime` event back within a bounded timeout. A connected-but-
+ *    silent Gateway (observed live 2026-08-07 — connected, heartbeating,
+ *    but getPositions() never received positionEnd) shows up here as
+ *    isConnected=true, apiResponseState='unresponsive'.
+ *  - This proves only that a currentTime round trip completed. It does NOT
+ *    prove reqPositions works, account-summary works, market-data
+ *    permissions are in place, or that the session is order-capable rather
+ *    than read-only/restricted. Treat it as a narrow liveness signal, not a
+ *    general API-health guarantee.
+ *  - Responsiveness is reset to 'unknown' whenever the heartbeat stops
+ *    (disconnect, kill, or a fresh reconnect) — it is never assumed good
+ *    just because a new transport session opened.
  */
 
 import { IBApi, EventName } from '@stoqey/ib';
@@ -37,6 +56,16 @@ const PORT              = 4002;
 const CLIENT_ID         = 1;
 const RECONNECT_DELAY_BASE_MS = 5_000;   // 5s base — multiplied by attempt#
 const MAX_RECONNECT_ATTEMPTS  = 10;
+
+// Heartbeat: keeps IB Gateway from dropping an idle connection (unchanged
+// cadence) and, since 2026-08-07, verifies the round trip actually
+// completes rather than just issuing the write.
+const HEARTBEAT_INTERVAL_MS         = 60_000;
+const HEARTBEAT_RESPONSE_TIMEOUT_MS = 10_000; // well under the 60s cadence and
+                                               // the 15s data-request timeout in
+                                               // account.js, so a stall surfaces
+                                               // here before/around the same time
+                                               // a real request would time out
 
 // ── Internal logging ──────────────────────────────────────────────────────────
 
@@ -66,6 +95,14 @@ class IBKRConnection {
     this._reconnectTimer  = null;
     this._reconnectCount  = 0;
     this._heartbeatTimer  = null;
+
+    // Response-verified API responsiveness. null = unknown (no probe has
+    // completed since the heartbeat last (re)started), true = last probe's
+    // currentTime round trip succeeded, false = last probe timed out or
+    // reqCurrentTime() threw. Distinct from `_connected` — see file header.
+    this._apiResponsive          = null;
+    this._heartbeatProbeInFlight = false;
+    this._heartbeatProbeCleanup  = null; // cancels the pending probe, if any
 
     // External subscribers wanting to know when connection state changes.
     // Key: event name ('connected' | 'disconnected' | 'killed')
@@ -152,7 +189,8 @@ class IBKRConnection {
     return this._api;
   }
 
-  /** True if the connection is currently live. */
+  /** True if the connection is currently live. Transport state only —
+   *  does not imply IB Gateway is responding to requests. See isApiResponsive. */
   get isConnected() {
     return this._connected && !this._killed;
   }
@@ -160,6 +198,22 @@ class IBKRConnection {
   /** True if the kill token has been fired this session. */
   get isKilled() {
     return this._killed;
+  }
+
+  /** True only when the response-verified heartbeat's most recent probe
+   *  completed with a confirmed currentTime round trip. Proves a narrow
+   *  liveness signal only — not reqPositions, account summary, market-data
+   *  permissions, or order-capability. See file header. */
+  get isApiResponsive() {
+    return this._apiResponsive === true;
+  }
+
+  /** 'unknown' before the first probe completes (or right after the
+   *  heartbeat stops), 'responsive', or 'unresponsive'. */
+  get apiResponseState() {
+    if (this._apiResponsive === true)  return 'responsive';
+    if (this._apiResponsive === false) return 'unresponsive';
+    return 'unknown';
   }
 
   /**
@@ -196,8 +250,11 @@ class IBKRConnection {
 
     // ── disconnected ──
     api.on(EventName.disconnected, () => {
-      this._clearHeartbeat();
+      // Generation guard first: a late disconnected event from a superseded
+      // instance must never clear heartbeat state belonging to the current
+      // active generation.
       if (this._api !== api) return;
+      this._clearHeartbeat();
       const wasConnected = this._connected;
       this._connected = false;
 
@@ -288,17 +345,102 @@ class IBKRConnection {
 
   _startHeartbeat(api) {
     this._clearHeartbeat();
-    this._heartbeatTimer = setInterval(() => {
-      if (this._api !== api || !this._connected) {
-        this._clearHeartbeat();
-        return;
-      }
-      try {
-        api.reqCurrentTime();
-      } catch (err) {
-        console.log(`[${now()}] IBKR: Heartbeat reqCurrentTime failed:`, err.message);
-      }
-    }, 60_000);
+    this._heartbeatTimer = setInterval(() => this._onHeartbeatTick(api), HEARTBEAT_INTERVAL_MS);
+  }
+
+  /**
+   * One heartbeat interval tick. Split out from _startHeartbeat so the
+   * generation-guard ordering is directly testable.
+   *
+   * A tick belonging to a superseded IBApi generation is a pure no-op — it
+   * must never clear heartbeat state that now belongs to a newer active
+   * generation. Only a tick from the currently active generation may clear
+   * its own heartbeat, and only because transport is no longer connected.
+   */
+  _onHeartbeatTick(api) {
+    if (this._api !== api) return;
+    if (!this._connected) {
+      this._clearHeartbeat();
+      return;
+    }
+    this._probeApiResponsiveness(api);
+  }
+
+  /**
+   * One response-verified heartbeat probe: issues reqCurrentTime() and
+   * requires the `currentTime` event back within HEARTBEAT_RESPONSE_TIMEOUT_MS.
+   * Guarded against overlap — a tick that fires while a probe is still
+   * pending is skipped rather than stacking a second listener/timer.
+   *
+   * Proves only that this one round trip completed — see file header for
+   * what this does and does not demonstrate about IBKR API capability.
+   */
+  _probeApiResponsiveness(api) {
+    if (this._heartbeatProbeInFlight) {
+      console.log(`[${now()}] IBKR: Heartbeat probe still pending — skipping this tick.`);
+      return;
+    }
+    this._heartbeatProbeInFlight = true;
+
+    let settled = false;
+    let responseTimer;
+
+    const cleanupProbe = () => {
+      clearTimeout(responseTimer);
+      api.removeListener(EventName.currentTime, onCurrentTime);
+      this._heartbeatProbeInFlight = false;
+      this._heartbeatProbeCleanup  = null;
+    };
+
+    const finish = (responsive, detail) => {
+      if (settled) return;
+      settled = true;
+      cleanupProbe();
+      this._setApiResponsive(responsive, api, detail);
+    };
+
+    function onCurrentTime() {
+      finish(true);
+    }
+
+    responseTimer = setTimeout(() => {
+      finish(false, 'heartbeat response timeout');
+    }, HEARTBEAT_RESPONSE_TIMEOUT_MS);
+
+    this._heartbeatProbeCleanup = cleanupProbe;
+
+    api.on(EventName.currentTime, onCurrentTime);
+
+    try {
+      api.reqCurrentTime();
+    } catch (err) {
+      console.log(`[${now()}] IBKR: Heartbeat reqCurrentTime failed:`, err.message);
+      finish(false, `reqCurrentTime threw: ${err.message}`);
+    }
+  }
+
+  /**
+   * Applies a probe result. Generation-guarded — a result tied to an old
+   * IBApi instance (superseded by a reconnect) is ignored, never allowed to
+   * restore or override the responsiveness of the currently active
+   * connection. Logs only on an actual state transition, to keep
+   * steady-state quiet, with wording that distinguishes first-time
+   * verification from recovery from a known-unresponsive state.
+   */
+  _setApiResponsive(responsive, api, detail) {
+    if (this._api !== api) return;
+    const prev = this._apiResponsive;
+    this._apiResponsive = responsive;
+    if (prev === responsive) return;
+    if (responsive) {
+      const verb = prev === null ? 'verified' : 'recovered';
+      console.log(`[${now()}] IBKR: API responsiveness ${verb} — currentTime round trip succeeded.`);
+    } else {
+      console.log(
+        `[${now()}] IBKR: API responsiveness degraded — ${detail} ` +
+        `(transport connected=${this._connected}).`
+      );
+    }
   }
 
   _clearHeartbeat() {
@@ -306,6 +448,18 @@ class IBKRConnection {
       clearInterval(this._heartbeatTimer);
       this._heartbeatTimer = null;
     }
+    if (this._heartbeatProbeCleanup) {
+      this._heartbeatProbeCleanup();
+      this._heartbeatProbeCleanup = null;
+    }
+    this._heartbeatProbeInFlight = false;
+    if (this._apiResponsive !== null) {
+      console.log(
+        `[${now()}] IBKR: API responsiveness reset to unknown ` +
+        `(heartbeat stopped; transport connected=${this._connected}).`
+      );
+    }
+    this._apiResponsive = null;
   }
 
   _clearReconnectTimer() {
@@ -327,6 +481,10 @@ class IBKRConnection {
 }
 
 // ── Singleton export ──────────────────────────────────────────────────────────
+
+// Named export of the class itself is test-only — application code always
+// uses the default singleton below.
+export { IBKRConnection };
 
 const ibkr = new IBKRConnection();
 export default ibkr;

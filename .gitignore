@@ -4,5 +4,8 @@ logs/
 .env
 data/fane.db
 data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.db-journal
 node_modules/
 /fane.db

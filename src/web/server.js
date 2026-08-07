@@ -360,9 +360,27 @@ function escHtml(s) {
 function navHtml(current = '') {
   const connected = ibkr.isConnected;
   const killed    = ibkr.isKilled;
-  const dotColor  = (killed || !connected) ? '#e53e3e' : '#38a169';
-  const dotLabel  = killed ? 'KILLED' : connected ? 'Connected' : 'Disconnected';
- 
+  const apiState  = ibkr.apiResponseState; // 'unknown' | 'responsive' | 'unresponsive'
+
+  // Transport state and response-verified API responsiveness are reported
+  // separately — a live socket session does not prove IB Gateway is
+  // actually answering requests, and a responsive heartbeat proves only a
+  // currentTime round trip, not reqPositions/account-summary/market-data/
+  // order-capability. Never show an unqualified "Connected" — always
+  // qualify it with the current responsiveness state.
+  let dotColor, dotLabel;
+  if (killed) {
+    dotColor = '#e53e3e'; dotLabel = 'KILLED';
+  } else if (!connected) {
+    dotColor = '#e53e3e'; dotLabel = 'Disconnected';
+  } else if (apiState === 'responsive') {
+    dotColor = '#38a169'; dotLabel = 'Connected (API responsive)';
+  } else if (apiState === 'unresponsive') {
+    dotColor = '#f0a500'; dotLabel = 'Connected (API unresponsive)';
+  } else {
+    dotColor = '#f0a500'; dotLabel = 'Connected (API unverified)';
+  }
+
   const pages = [
     ['/',          'Briefing'],
     ['/signals',   'Signals'],

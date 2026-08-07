@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "init-db": "node src/db/init.js",
-    "brief": "node src/agent/test-briefing.js"
+    "brief": "node src/agent/manual-briefing.js",
+    "test": "node --test test/ibkr-connection.test.js"
   },
   "keywords": [],
   "author": "Brad",
