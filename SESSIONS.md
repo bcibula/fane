@@ -6,6 +6,90 @@
 ## 2026-08-07
 
 ### What changed
+- Completed the final post-deployment IBKR capability check. Brad loaded the
+  normal Fane Positions page after deployment; it completed successfully,
+  rendered current account positions, and the navigation badge remained
+  "Connected (API responsive)".
+- The earlier 2026-08-07 getPositions() failure is therefore closed
+  operationally as a transient functional IBKR API non-response. Exact root
+  cause remains undetermined, but the failure is no longer reproducible and
+  no further investigation is warranted unless it recurs.
+- The new response-verified heartbeat remains intentionally narrower than a
+  general "API healthy" claim: it proves reqCurrentTime/currentTime
+  responsiveness, while the successful Positions-page test separately proves
+  the account-position read path was functioning after deployment. Neither
+  proves every IBKR capability or order permission.
+- The Positions portion of the deferred Stage 2.5 UI walkthrough is now
+  confirmed working. Signals and Trades still require explicit walkthrough
+  completion.
+- Claude Code execution work from the operational-hardening session was
+  previously closed cleanly and recorded on canonical main at commit
+  cf99204b9c264c86fcb40fdd0b3c732b6c12a158.
+- Brad identified a usability problem with the session protocol itself:
+  manually pasting PROMPT 1 and PROMPT 2 at every session boundary is becoming
+  burdensome. The protocol guarantees remain valuable and validated, but its
+  user-facing ceremony should be revisited. This is an ergonomics problem,
+  not a reason to reopen the already-validated bootstrap design.
+
+### Open
+- Revisit Fane session-protocol ergonomics: preserve human date confirmation,
+  canonical bootstrap, fail-closed retrieval, complete ledger reconciliation,
+  and the ChatGPT-thinking / Claude-Code-implementation division while reducing
+  or eliminating Brad's need to manually paste PROMPT 1 and PROMPT 2.
+- Stage 3 signal-detection architecture: design and implementation not started;
+  still deferred pending Phase 1 market foundations.
+- External IBKR watchdog remains port-liveness based. Fane now detects API
+  unresponsiveness internally, but that signal is not integrated with watchdog
+  recovery or Telegram notification. Do not add automatic recovery without a
+  separate design decision.
+- IBKR read-only/trading-capability state detection remains separate from
+  general API responsiveness and is still parked for reconsideration before
+  Stage 3.
+- Dedicated monitoring for silent IBC authentication or forced-password-
+  rotation failures still does not exist.
+- Market snapshot dynamic price feed: designed but not implemented.
+- Morning question engine: designed but not implemented.
+- Verify extractLearnSection() topic extraction.
+- Complete the Stage 2.5 UI walkthrough of Signals and Trades; Positions was
+  verified successfully on 2026-08-07.
+- Fix the briefing-page left-margin alignment bug.
+- Migrate remaining navigation and signal-card inline styles to CSS custom
+  properties.
+- Complete the deferred dark-mode aesthetic pass for colours and fonts.
+- Evaluate a hash-chained audit trail at Stage 5.
+- Conduct a dedicated PRINCIPLES.md catch-up review.
+- Operationalize Principle 10 by mechanically surfacing principles, Year 1
+  topics, and reading recommendations in Fane.
+- Annotations page build remains pending Stage 3 and schema verification.
+- Fix annotation Markdown rendering in renderAnnotationThread and appendThread.
+- Complete annotation cleanup: deletion, highlight spans, and short-text
+  selection.
+- Review the annotation API model for cost and quality alignment.
+- Conduct a dedicated working-model review session.
+- Continue OTEX, comparable-company, and FAANG watchlist work.
+- Design and implement the position-tracking page.
+- Implement the previously decided annotation open-thread workflow.
+- Explore how LLM humour works mechanically as an OpenClaw Track 2 question.
+- Explore the confidence-calibration and tracing-layer product concept.
+- Verify in Brad's delivered inbox that the live briefing email contains the
+  moved "View full briefing online" link; code/template and successful send
+  path are verified, but rendered inbox content has not been directly checked.
+- Determine the status of migrating historical fane.db data from the old VM to
+  the VPS; current evidence remains suggestive but not conclusive.
+- Decide whether OpenClaw filesystem permissions should be applied now that
+  they are confirmed absent.
+- Investigate the OpenClaw gateway.controlUi.allowInsecureAuth=true warning
+  read-only before deciding whether any configuration change is appropriate.
+
+### Next
+- Revisit session-protocol ergonomics without reopening the validated bootstrap
+  design: determine how PROMPT 1 and PROMPT 2 can become automatic/implicit
+  operating rules rather than manual Brad-operated rituals, while preserving
+  all current safety guarantees. Then return to Phase 1 Year 1 learning work.
+
+## 2026-08-07
+
+### What changed
 - Completed the full end-to-end session-protocol smoke test: PROMPT 1 in
   ChatGPT, implementation through Claude Code, commit/push to canonical main,
   then PROMPT 2 plus the generated handoff in a fresh ChatGPT session.
