@@ -9,31 +9,108 @@ Standard prompts for Fane working sessions.
 
 ## PROMPT 1 — End of session
 
-We are wrapping up this chat. Please do three things:
+We are closing this Fane thinking session.
 
-1. **Update project memory** — review what was discussed and accomplished
-   in this chat and update your memory accordingly. Add new entries,
-   replace outdated ones, and remove anything no longer accurate.
+If Brad has not already confirmed the session date in this chat, ask now
+and wait.
 
-2. **Update SESSIONS.md** — generate a new entry for today in the lean
-   format (what changed / open / next), to be prepended to the top of
-   SESSIONS.md. Flag any insight-level additions for PRINCIPLES.md if
-   something principle-worthy surfaced this session.
+Use only Brad's confirmed date for the proposed `SESSIONS.md` entry and
+the next-session handoff. Never alter historical dates already present
+in repository content.
 
-3. **Generate a next-chat prompt** — write a complete context prompt I
-   can paste into a new chat to continue the project, in this exact format:
+Use only the repository state loaded and verified during the current
+session bootstrap, together with work actually discussed and completed
+during this session. Do not use model memory, prior chat context,
+mounted copies, or cached files as authority.
 
-   Use PROMPT 2 from PROMPTS.md to open this session, then load this context:
+ChatGPT is the thinking and drafting layer. Claude Code is the
+implementation layer. Do not edit the repository directly or claim that
+repository changes, commits, pushes, service checks, or deployments were
+performed.
 
-   Fane session — [DATE]
+### 1. Reconcile the session ledger
 
-   Completed this session:
-   - [what changed]
+Review:
 
-   Open items:
-   - [full list]
+- the latest `SESSIONS.md` entry
+- every previously open item
+- the work actually completed during this session
 
-   Where to start: [one line]
+Every previously open item must be:
+
+- carried forward as open
+- marked completed with supporting evidence
+- deferred with a reason
+- removed with a reason
+
+Never allow an item to disappear through omission.
+
+### 2. Draft the SESSIONS.md entry
+
+Draft one new entry using Brad's confirmed date and this format:
+
+    ## YYYY-MM-DD
+
+    ### What changed
+    - ...
+
+    ### Open
+    - ...
+
+    ### Next
+    - ...
+
+The entry will be prepended above existing entries. Do not rewrite,
+merge, correct, or otherwise alter historical entries, including an
+earlier entry with the same date.
+
+Do not propose creating additional Markdown files.
+
+If something principle-worthy emerged, propose the addition separately
+for Brad's review. Do not include an edit to `PRINCIPLES.md` without
+Brad's explicit approval.
+
+### 3. Produce the next-session handoff
+
+Derive the handoff from the final proposed `SESSIONS.md` entry. Do not
+compose it independently.
+
+Use exactly this format:
+
+    Fane session — [DATE]
+
+    Completed this session:
+    - [what changed]
+
+    Open items:
+    - [complete reconciled list]
+
+    Where to start: [one specific next action]
+
+The handoff is supplemental context to append to the canonical PROMPT 2.
+It is not authority when it conflicts with the repository.
+
+### 4. Produce the Claude Code implementation prompt
+
+Produce a complete prompt Brad can paste into Claude Code.
+
+The Claude Code prompt must instruct Claude Code to:
+
+1. Execute PROMPT 2 and complete the canonical bootstrap if bootstrap has
+   not already succeeded in that Claude Code session.
+2. Apply only the exact repository changes approved by Brad.
+3. Inspect the complete working tree and diff before staging.
+4. Stage only the intended files.
+5. Commit with a specific message describing the session.
+6. Push to canonical `main`.
+7. Fetch the remote state and verify:
+   - the working tree is clean
+   - local `HEAD` matches `origin/main`
+   - the canonical files contain the intended changes
+8. Report the exact failure and stop if any edit, commit, push, fetch, or
+   verification step fails.
+
+Do not instruct ChatGPT to perform implementation work.
 
 ---
 

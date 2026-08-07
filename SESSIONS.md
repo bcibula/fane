@@ -6,6 +6,126 @@
 ## 2026-08-06
 
 ### What changed
+- PROMPT 2 was tested from a fresh ChatGPT session and passed.
+- ChatGPT retrieved and verified all six canonical bootstrap files, rejected
+  a truncated `SESSIONS.md` response, and completed retrieval using bounded
+  ranges rather than substituting partial content.
+- PROMPT 2 was tested from a fresh Claude Code session and passed.
+- Claude Code rejected a paraphrased WebFetch response, retrieved the exact
+  canonical files with raw `curl`, verified successful responses and file
+  completeness, and compared the canonical files with the local checkout.
+- Claude Code's initial `AskUserQuestion` validation error was recoverable
+  and did not violate the date gate; no bootstrap work began before Brad
+  confirmed the date.
+- `BOOTSTRAP.md` and PROMPT 2 are now considered validated in both ChatGPT
+  and Claude Code. Change them again only in response to a demonstrated
+  failure or clearly unnecessary complexity. This also resolves the
+  2026-07-27 structural note that `BOOTSTRAP.md` specified Claude-specific
+  tooling and did not port to another tool — the redesigned bootstrap was
+  proven tool-independent by passing in both environments.
+- PROMPT 1 reviewed and redesigned around the actual working model:
+  ChatGPT is the thinking and drafting layer; Claude Code performs all
+  repository edits, implementation, commits, pushes, and live system checks.
+- PROMPT 1 now requires explicit reconciliation of every previously open
+  item and derives the next-session handoff from the final proposed ledger
+  entry rather than generating an independent parallel account. This
+  resolves two long-standing structural gaps: the 2026-07-09 "review/
+  recirculation ritual — undesigned" item, and the 2026-07-27 observation
+  that "nothing prevents open-list items from being dropped between
+  entries" — both are now addressed by making reconciliation mandatory at
+  every session close.
+- Full ledger reconciliation performed against every entry from 2026-05-20
+  through 2026-07-27 (not just the 2026-07-27 reconstructed list), per
+  Brad's instruction that the July 27 list is a minimum baseline, not the
+  full set.
+- Confirmed already resolved and excluded from the open list below (with
+  evidence in earlier entries): code 399 handling, `Restart=on-failure` on
+  `fane.service`, the briefing-failure Telegram notifier, the AAPL
+  BUY-1-share fill confirmations and associated DB checks (May 2026,
+  multiple entries), the `$(date)` placeholder fix in `PRINCIPLES.md`, the
+  repo being made public, the May 27 "confirm git add setting" item (no
+  recurrence in three months of subsequent commits), the May 27 "server.js
+  dark mode changes — committed? confirm" item (dark mode was implemented
+  and committed 2026-06-01), and the June 17 "confirm 29 fills" item (no
+  failure reported in any subsequent session).
+- Restored to the open list below, having been dropped from the ledger
+  without a recorded resolution: Stage 3 signal detection architecture
+  (open since 2026-05-24, referenced as still pending as late as
+  2026-07-27 but never itself listed as an open line item), IBKR
+  read-only session state detection (parked 2026-07-13, never carried
+  forward after), the Stage 2.5 UI walkthrough of Signals/Positions/Trades
+  (open since 2026-06-01), the dark mode aesthetic pass (deferred
+  2026-06-01), operationalizing Principle 10 (documentation must be
+  operationally close to behavior — from 2026-05-24), and the 2026-07-09
+  PRINCIPLES.md insight-log entry (was "drafted, below" in that session but
+  its content was never carried into a later entry or confirmed written).
+- Two items carried forward with status explicitly flagged as unverifiable
+  rather than dropped: migrating historical `fane.db` from the old VM to
+  the VPS (last mentioned 2026-05-25) and OpenClaw filesystem permissions
+  (`agents.defaults.permissions.filesystem`, last mentioned 2026-05-20).
+  Neither appears in any later entry as done or abandoned.
+
+### Open
+- Run one complete end-to-end session-protocol smoke test: PROMPT 1 in
+  ChatGPT, implementation through Claude Code, commit and push, then
+  PROMPT 2 plus the generated handoff in a fresh ChatGPT session.
+- After the smoke test, close protocol redesign unless a demonstrated
+  failure appears.
+- Perform a live VPS operational-state check after protocol work closes.
+- Stage 3: signal detection architecture — design and implementation not
+  started; deferred across multiple sessions since 2026-05-24 pending
+  Phase 1 market foundations.
+- IBC authentication-state watchdog gap: port 4002 listening does not
+  prove that IBC is authenticated or that the IBKR API is usable.
+- IBKR read-only session state detection — parked, revisit pre-Stage 3.
+- Market snapshot dynamic price feed: designed but not implemented.
+- Morning question engine: designed but not implemented.
+- Verify `extractLearnSection()` topic extraction.
+- Stage 2.5 UI walkthrough — Signals, Positions, and Trades flows not
+  confirmed as actively tested.
+- Briefing page left-margin alignment bug.
+- Migrate remaining navigation and signal-card inline styles to CSS custom
+  properties.
+- Dark mode aesthetic pass — colours and fonts refinement, deferred since
+  2026-06-01.
+- Hash-chained audit trail: evaluate at Stage 5.
+- Dedicated `PRINCIPLES.md` catch-up review.
+- Operationalize Principle 10 — agent prompts should load `PRINCIPLES.md`
+  and `YEAR1.md` skill-file style; the briefing layer should surface
+  principles, Year 1 topics, and reading recommendations.
+- Locate or recreate the `PRINCIPLES.md` insight-log entry drafted
+  2026-07-09 — original content was never carried into a later entry;
+  status unverified.
+- IBKR health check and Telegram alert for sustained gateway disconnection.
+- Monitor IBC login and forced-password-rotation failures that can occur
+  silently.
+- Annotations page build, pending Stage 3 and schema verification.
+- Annotation markdown rendering bug in `renderAnnotationThread` and
+  `appendThread`.
+- Annotation cleanup: deletion, highlight spans, and short-text selection.
+- Review annotation API model cost and quality alignment.
+- Dedicated working-model review session.
+- OTEX, comparable-company, and FAANG watchlist work.
+- Position-tracking page design and implementation.
+- Implement the previously decided annotation open-thread workflow.
+- OpenClaw Track 2 question: how LLM humour works mechanically.
+- Confidence-calibration and tracing layer product concept.
+- Verify the live briefing email contains the moved
+  "View full briefing online" link.
+- Migrate historical `fane.db` from the old VM to the VPS — status
+  unknown since 2026-05-25, not mentioned in any later entry.
+- OpenClaw filesystem permissions (`agents.defaults.permissions.filesystem`)
+  not yet applied — status unknown since 2026-05-20, not mentioned in any
+  later entry.
+
+### Next
+- Commit and push the PROMPT 1 revision and this reconciled session entry,
+  then run the single end-to-end protocol smoke test from a fresh ChatGPT
+  session.
+
+## 2026-08-06
+
+### What changed
 - READING.md foundation improvements completed, committed, and pushed
   (commit 0ae699e).
 - Uncommitted July 28 BOOTSTRAP.md and PROMPTS.md drafts investigated and
