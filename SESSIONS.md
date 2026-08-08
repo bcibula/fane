@@ -3,6 +3,56 @@
 
 # Sessions
 
+## 2026-08-08
+
+### What changed
+- Reworked Fane session ergonomics at the ChatGPT Project layer without reopening or weakening the validated canonical bootstrap design.
+- Added thin Fane Project instructions that automatically enforce the established responsibility split: ChatGPT remains the thinking/review/planning layer; Claude Code remains the execution, repository-write, deployment, command, and live-VPS layer.
+- Added automatic per-chat bootstrap behavior. A new Fane chat must confirm Brad's date, retrieve canonical BOOTSTRAP.md from main, execute it fail-closed, and recover continuation state from canonical SESSIONS.md. Brad no longer needs to paste PROMPT 2 or the previous-session handoff into ChatGPT.
+- Explicitly established that LLM memory and project-chat history may aid conversational continuity but cannot serve as authority for Fane state or override canonical main.
+- Added provenance boundaries after bootstrap: canonical documented state, historical implementation claims in SESSIONS.md, current repository implementation state, and current live VPS/runtime state must remain distinct. Current implementation details require read-only inspection of canonical main; live operational claims remain Claude Code territory.
+- Added an explicit sequencing gate. Before beginning requested Fane work, ChatGPT must compare the request against the latest canonical SESSIONS.md ### Next and explicit deferrals. A conflicting request does not itself override canonical sequencing; Brad must explicitly approve the override.
+- Adversarial startup testing exposed and corrected two weaknesses in successive iterations. The initial gate correctly required date confirmation but later allowed historical implementation claims and a Stage 3 request to outrun canonical sequencing. The instructions were strengthened rather than treating the initial partial success as sufficient.
+- Final adversarial Stage 3 test passed: after canonical bootstrap, ChatGPT identified that Stage 3 remains deferred pending Phase 1 market foundations, refused to begin the requested design work, and required an explicit Brad override.
+- False-state test also passed: when Brad asserted that Stage 3 had already been opened and committed previously, ChatGPT checked canonical state, rejected the recollection as authority, preserved the existing deferral, and offered to treat Brad's statement only as a new explicit override decision.
+- Implicit session-close behavior was then tested in this live session. Brad said only "Close the Fane session"; ChatGPT invoked the canonical PROMPT 1 procedure already loaded during bootstrap without requiring Brad to paste PROMPT 1.
+- The session-protocol ergonomics issue is therefore resolved for normal ChatGPT Project use: the expected lifecycle is now new chat → date confirmation → automatic canonical bootstrap → normal work → "Close the Fane session". PROMPT 1, PROMPT 2, and the handoff remain available canonically as portable/fallback procedures rather than Brad-operated clipboard rituals.
+- Identified an obsolete Then Update Git / git add -A block in canonical PROMPTS.md. It conflicts with the newer responsibility split and selective-staging requirements. No repository edit was approved or made for it during this session.
+
+### Open
+- Remove or reconcile the obsolete Then Update Git / git add -A block in PROMPTS.md without reopening the validated bootstrap design.
+- Stage 3 signal-detection architecture: design and implementation not started; still deferred pending Phase 1 market foundations.
+- External IBKR watchdog remains port-liveness based. Fane detects API unresponsiveness internally, but that signal is not integrated with watchdog recovery or Telegram notification. Do not add automatic recovery without a separate design decision.
+- IBKR read-only/trading-capability state detection remains separate from general API responsiveness and is still parked for reconsideration before Stage 3.
+- Dedicated monitoring for silent IBC authentication or forced-password-rotation failures still does not exist.
+- Market snapshot dynamic price feed: designed but not implemented.
+- Morning question engine: designed but not implemented.
+- Verify extractLearnSection() topic extraction.
+- Complete the Stage 2.5 UI walkthrough of Signals and Trades; Positions was verified successfully on 2026-08-07.
+- Fix the briefing-page left-margin alignment bug.
+- Migrate remaining navigation and signal-card inline styles to CSS custom properties.
+- Complete the deferred dark-mode aesthetic pass for colours and fonts.
+- Evaluate a hash-chained audit trail at Stage 5.
+- Conduct a dedicated PRINCIPLES.md catch-up review.
+- Operationalize Principle 10 by mechanically surfacing principles, Year 1 topics, and reading recommendations in Fane.
+- Annotations page build remains pending Stage 3 and schema verification.
+- Fix annotation Markdown rendering in renderAnnotationThread and appendThread.
+- Complete annotation cleanup: deletion, highlight spans, and short-text selection.
+- Review the annotation API model for cost and quality alignment.
+- Conduct a dedicated working-model review session.
+- Continue OTEX, comparable-company, and FAANG watchlist work.
+- Design and implement the position-tracking page.
+- Implement the previously decided annotation open-thread workflow.
+- Explore how LLM humour works mechanically as an OpenClaw Track 2 question.
+- Explore the confidence-calibration and tracing-layer product concept.
+- Verify in Brad's delivered inbox that the live briefing email contains the moved "View full briefing online" link; code/template and successful send path are verified, but rendered inbox content has not been directly checked.
+- Determine the status of migrating historical fane.db data from the old VM to the VPS; current evidence remains suggestive but not conclusive.
+- Decide whether OpenClaw filesystem permissions should be applied now that they are confirmed absent.
+- Investigate the OpenClaw gateway.controlUi.allowInsecureAuth=true warning read-only before deciding whether any configuration change is appropriate.
+
+### Next
+- Return to Phase 1 Year 1 learning work. Treat the new implicit ChatGPT session protocol as normal operation and harden it only in response to demonstrated failures. Clean up the obsolete PROMPTS.md git-command block when convenient, without allowing protocol work to displace the curriculum again.
+
 ## 2026-08-07
 
 ### What changed
