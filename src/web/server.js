@@ -1278,7 +1278,7 @@ app.get('/trades', (req, res) => {
 
   const body = `
     <h1>Trades</h1>
-    <p class="meta">Orders and completed positions</p>
+    <p class="meta">Orders and trade records</p>
 
     <h2>Orders</h2>
     <div class="card" style="padding:0;overflow:hidden;">
@@ -1292,11 +1292,11 @@ app.get('/trades', (req, res) => {
       </table>
     </div>
 
-    <p class="section-heading">Closed trades</p>
+    <p class="section-heading">Trade records</p>
     <div class="card" style="padding:0;overflow:hidden;">
       <table>
         <thead><tr>
-          <th>Instrument</th><th>Direction</th><th>Shares</th><th>Entry</th><th>Exit</th><th>P&amp;L</th><th>Date</th>
+          <th>Instrument</th><th>Direction</th><th>Shares</th><th>Entry</th><th>Exit</th><th>P&amp;L</th><th>Entry Date</th>
         </tr></thead>
         <tbody>
           ${trades.length > 0 ? trades.map(tradeRow).join('') : emptyRow(7, 'No closed trades yet.')}
