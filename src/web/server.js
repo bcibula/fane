@@ -387,20 +387,23 @@ function navHtml(current = '') {
   ];
  
   const links = pages.map(([href, label]) =>
-    `<a href="${href}" style="color:${current===href?'var(--text-strong)':'var(--text-dim)'};font-weight:${current===href?'600':'400'};text-decoration:none;">${label}</a>`
+    `<a href="${href}" class="nav-link${current===href?' active':''}">${label}</a>`
   ).join('');
 
   return `
-    <nav style="display:flex;align-items:center;gap:20px;padding:12px 0;border-bottom:1px solid var(--border);margin-bottom:28px;">
-      <span style="font-weight:700;color:var(--text-strong);">Fane</span>
+    <nav class="site-nav">
+      <a href="/" class="nav-brand" title="Fane home">Fane</a>
       ${links}
-      <span style="margin-left:auto;display:flex;align-items:center;gap:8px;">
-        <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};display:inline-block;"></span>
-        <span style="font-size:12px;color:var(--text-muted);">IBKR: ${dotLabel}</span>
-        ${!killed
-          ? `<button onclick="confirmKill()" style="margin-left:8px;border:1px solid #e53e3e;color:#e53e3e;background:none;border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer;">Kill</button>`
-          : `<strong style="margin-left:8px;font-size:12px;color:#e53e3e;">KILL ACTIVE — restart required</strong>`
-        }
+      <span class="nav-right">
+        <a href="https://github.com/bcibula/fane" target="_blank" rel="noopener noreferrer" class="nav-repo">Repo ↗</a>
+        <span style="display:flex;align-items:center;gap:8px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};display:inline-block;"></span>
+          <span style="font-size:12px;color:var(--text-muted);">IBKR: ${dotLabel}</span>
+          ${!killed
+            ? `<button onclick="confirmKill()" style="margin-left:8px;border:1px solid #e53e3e;color:#e53e3e;background:none;border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer;">Kill</button>`
+            : `<strong style="margin-left:8px;font-size:12px;color:#e53e3e;">KILL ACTIVE — restart required</strong>`
+          }
+        </span>
       </span>
     </nav>
     <script>
@@ -557,6 +560,24 @@ function pageShell(title, current, body) {
     .empty-state { color: var(--text-muted); font-size: 14px; text-align: center; padding: 40px 0; line-height: 2; }
     .footer { margin-top: 40px; font-size: 12px; color: var(--text-faint); }
     .briefing { line-height: 1.7; background: var(--surface); padding: 24px; border-radius: 8px; border: 1px solid var(--border); }
+    .site-nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 28px;
+    }
+    .nav-brand { font-weight: 700; color: var(--text-strong); text-decoration: none; }
+    .nav-link { color: var(--text-dim); font-weight: 400; text-decoration: none; }
+    .nav-link.active { color: var(--text-strong); font-weight: 600; }
+    .nav-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+    .nav-repo { color: var(--text-muted); font-size: 12px; text-decoration: none; }
+    .nav-repo:hover { color: var(--text-dim); }
     ${annotationStyles()}
   </style>
 </head>
