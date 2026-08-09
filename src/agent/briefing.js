@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from 'dotenv';
+import { formatInstrumentLabel } from '../ibkr/instruments.js';
 
 config();
 
@@ -7,9 +8,13 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
 });
 
-export async function generateBriefing(snapshot, positions = [], recentBriefings = []) {
+function labelFor(symbol, instrumentMetadata) {
+  return formatInstrumentLabel(symbol, instrumentMetadata.get(String(symbol ?? '').trim().toUpperCase()));
+}
+
+export async function generateBriefing(snapshot, positions = [], recentBriefings = [], instrumentMetadata = new Map()) {
   const positionsText = positions.length > 0
-    ? positions.map(p => `- ${p.symbol}: ${p.position} shares @ avg $${p.avg_cost}`).join('\n')
+    ? positions.map(p => `- ${labelFor(p.symbol, instrumentMetadata)}: ${p.position} shares @ avg $${p.avg_cost}`).join('\n')
     : 'No open positions.';
 
   const recentTopicsText = recentBriefings.length > 0
@@ -31,6 +36,7 @@ Current paper positions:
 ${positionsText}
 Explain why things moved, not just that they did.
 Use plain language. Define any term that a beginner might not know.
+When an instrument is supplied as "Name (TICKER)", use that full form on its first meaningful mention and the ticker alone afterward. If only a ticker is supplied, use the ticker — never invent a name.
 
 These are the "one thing to learn" topics from the last 7 briefings — do not repeat any of them; pick a different concept present in today's data:
 ${recentTopicsText}
@@ -43,7 +49,7 @@ Equities:
 - S&P 500: ${snapshot.sp500.price} (${snapshot.sp500.change_pct}%)
 - NASDAQ: ${snapshot.nasdaq.price} (${snapshot.nasdaq.change_pct}%)
 - TSX: ${snapshot.tsx.price} (${snapshot.tsx.change_pct}%)
-- AAPL: ${snapshot.aapl.price} (${snapshot.aapl.change_pct}%)
+- ${labelFor('AAPL', instrumentMetadata)}: ${snapshot.aapl.price} (${snapshot.aapl.change_pct}%)
 
 Risk and Rates:
 - VIX: ${snapshot.vix.price} (${snapshot.vix.change_pct}%)

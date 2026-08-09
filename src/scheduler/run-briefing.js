@@ -5,6 +5,7 @@ import { saveBriefing } from '../db/briefing.js';
 import { today, now } from '../utils/time.js';
 import { sendBriefingEmail } from '../agent/email.js';
 import { getDb } from '../db/schema.js';
+import { getCachedInstrumentMetadataBySymbols } from '../ibkr/instruments.js';
 
 function extractLearnSection(text) {
   const match = text.match(/3\.\s+(?:One thing to learn|The one thing)[^\n]*\n+([\s\S]{0,300})/i);
@@ -24,9 +25,17 @@ try {
 
   const recentBriefings = recentBriefingRows.map(r => extractLearnSection(r.briefing_text));
 
+  let instrumentMetadata = new Map();
+  try {
+    const symbols = [...new Set([...positions.map(p => p.symbol), 'AAPL'])];
+    instrumentMetadata = getCachedInstrumentMetadataBySymbols(symbols);
+  } catch (err) {
+    console.log(`[${now()}] Instruments: cached metadata lookup failed, falling back to tickers: ${err.message}`);
+  }
+
   const snapshot = await getMarketSnapshot();
   await saveMarketSnapshot(snapshot);
-  const briefing = await generateBriefing(snapshot, positions, recentBriefings);
+  const briefing = await generateBriefing(snapshot, positions, recentBriefings, instrumentMetadata);
   saveBriefing(today(), briefing);
   await sendBriefingEmail(today(), briefing);
 

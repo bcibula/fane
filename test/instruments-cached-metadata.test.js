@@ -13,7 +13,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { groupUniqueBySymbol } from '../src/ibkr/instruments.js';
+import { groupUniqueBySymbol, formatInstrumentLabel } from '../src/ibkr/instruments.js';
 
 test('a symbol backed by exactly one conId resolves to its row', () => {
   const rows = [
@@ -71,4 +71,31 @@ test('multiple unrelated symbols each resolve independently', () => {
   assert.equal(result.get('AAPL').long_name, 'Apple Inc.');
   assert.equal(result.get('MSFT').long_name, 'Microsoft Corporation');
   assert.equal(result.has('DUP'), false, 'ambiguous symbol excluded even while others resolve fine');
+});
+
+test('formatInstrumentLabel: name + ticker produces "Name (TICKER)"', () => {
+  assert.equal(
+    formatInstrumentLabel('AAPL', { longName: 'Apple Inc.' }),
+    'Apple Inc. (AAPL)'
+  );
+});
+
+test('formatInstrumentLabel: missing metadata falls back to ticker only', () => {
+  assert.equal(formatInstrumentLabel('AAPL', undefined), 'AAPL');
+  assert.equal(formatInstrumentLabel('AAPL', null), 'AAPL');
+});
+
+test('formatInstrumentLabel: empty/missing longName falls back to ticker only', () => {
+  assert.equal(formatInstrumentLabel('AAPL', {}), 'AAPL');
+  assert.equal(formatInstrumentLabel('AAPL', { longName: null }), 'AAPL');
+  assert.equal(formatInstrumentLabel('AAPL', { longName: '' }), 'AAPL');
+  assert.equal(formatInstrumentLabel('AAPL', { longName: '   ' }), 'AAPL');
+});
+
+test('formatInstrumentLabel: normalizes ticker casing and whitespace safely', () => {
+  assert.equal(
+    formatInstrumentLabel('aapl', { longName: 'Apple Inc.' }),
+    'Apple Inc. (AAPL)'
+  );
+  assert.equal(formatInstrumentLabel('  aapl  ', undefined), 'AAPL');
 });

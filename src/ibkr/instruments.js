@@ -274,6 +274,25 @@ export function getCachedInstrumentMetadataBySymbols(symbols) {
   return result;
 }
 
+// ── formatInstrumentLabel ────────────────────────────────────────────────────
+
+/**
+ * Prose label for a ticker, e.g. "Apple Inc. (AAPL)" when a descriptive name
+ * is available, falling back to the bare ticker ("AAPL") otherwise. Used for
+ * the first meaningful mention of an instrument in generated text (briefing).
+ *
+ * Pure function — no DB or IBKR dependency, never guesses a name.
+ *
+ * @param {string} symbol
+ * @param {{longName?: string|null}} [metadata]
+ * @returns {string}
+ */
+export function formatInstrumentLabel(symbol, metadata) {
+  const ticker = String(symbol ?? '').trim().toUpperCase();
+  const longName = metadata?.longName ? String(metadata.longName).trim() : '';
+  return longName ? `${longName} (${ticker})` : ticker;
+}
+
 /**
  * Pure grouping helper: given instrument_metadata-shaped rows (each with a
  * `symbol` and `con_id`), returns a Map of normalized-symbol -> row for
