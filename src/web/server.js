@@ -1299,7 +1299,7 @@ app.get('/trades', (req, res) => {
           <th>Instrument</th><th>Direction</th><th>Shares</th><th>Entry</th><th>Exit</th><th>P&amp;L</th><th>Entry Date</th>
         </tr></thead>
         <tbody>
-          ${trades.length > 0 ? trades.map(tradeRow).join('') : emptyRow(7, 'No closed trades yet.')}
+          ${trades.length > 0 ? trades.map(tradeRow).join('') : emptyRow(7, 'No trade records yet.')}
         </tbody>
       </table>
     </div>`;
