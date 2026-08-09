@@ -226,3 +226,81 @@ export async function resolveInstrumentMetadata(positions) {
 
   return result;
 }
+
+// ── getCachedInstrumentMetadataBySymbols ─────────────────────────────────────
+
+/**
+ * Cache-only, symbol-keyed metadata lookup for pages that have only a ticker
+ * (no conId) — currently Signals, with Trades/briefing as future consumers.
+ * Never issues a live IBKR call; reads whatever resolveInstrumentMetadata()
+ * has already cached in instrument_metadata.
+ *
+ * A symbol resolves only when it maps to exactly one cached conId. Real
+ * ticker symbols are reused across exchanges/security types, so a symbol
+ * backed by more than one cached conId is ambiguous and is deliberately
+ * left unresolved — callers fall back to the ticker. This does not weaken
+ * the conId-keyed authoritative model above; it's a strictly read-only,
+ * best-effort layer on top of the same cache.
+ *
+ * @param {Array<string>} symbols
+ * @returns {Map<string, {longName: string|null, secType: string|null, stockType: string|null}>}
+ *   keyed by the normalized (trimmed, uppercased) symbol
+ */
+export function getCachedInstrumentMetadataBySymbols(symbols) {
+  const normalized = [...new Set(
+    (symbols || [])
+      .filter(s => s != null && String(s).trim() !== '')
+      .map(s => String(s).trim().toUpperCase())
+  )];
+  if (normalized.length === 0) return new Map();
+
+  const db = getDb();
+  let rows;
+  try {
+    const placeholders = normalized.map(() => '?').join(',');
+    rows = db.prepare(
+      `SELECT con_id, symbol, long_name, sec_type, stock_type
+       FROM instrument_metadata WHERE UPPER(symbol) IN (${placeholders})`
+    ).all(...normalized);
+  } finally {
+    db.close();
+  }
+
+  const uniqueBySymbol = groupUniqueBySymbol(rows);
+  const result = new Map();
+  for (const [symbol, row] of uniqueBySymbol) {
+    result.set(symbol, { longName: row.long_name, secType: row.sec_type, stockType: row.stock_type });
+  }
+  return result;
+}
+
+/**
+ * Pure grouping helper: given instrument_metadata-shaped rows (each with a
+ * `symbol` and `con_id`), returns a Map of normalized-symbol -> row for
+ * symbols backed by exactly one distinct conId. Symbols backed by more than
+ * one conId are ambiguous and excluded entirely. Exported so this logic can
+ * be unit tested without touching the database.
+ *
+ * @param {Array<{symbol: string, con_id: number}>} rows
+ * @returns {Map<string, object>}
+ */
+export function groupUniqueBySymbol(rows) {
+  const conIdsBySymbol = new Map(); // normalized symbol -> Set<conId>
+  const rowByKey = new Map();       // `${symbol}|${conId}` -> row
+
+  for (const row of rows) {
+    const key = String(row.symbol).trim().toUpperCase();
+    if (!conIdsBySymbol.has(key)) conIdsBySymbol.set(key, new Set());
+    conIdsBySymbol.get(key).add(row.con_id);
+    rowByKey.set(`${key}|${row.con_id}`, row);
+  }
+
+  const result = new Map();
+  for (const [symbol, conIds] of conIdsBySymbol) {
+    if (conIds.size === 1) {
+      const [conId] = conIds;
+      result.set(symbol, rowByKey.get(`${symbol}|${conId}`));
+    }
+  }
+  return result;
+}

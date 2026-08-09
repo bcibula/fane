@@ -7,7 +7,7 @@
     "start": "node index.js",
     "init-db": "node src/db/init.js",
     "brief": "node src/agent/manual-briefing.js",
-    "test": "node --test test/ibkr-connection.test.js test/ibkr-account-snapshot.test.js"
+    "test": "node --test test/ibkr-connection.test.js test/ibkr-account-snapshot.test.js test/instruments-cached-metadata.test.js"
   },
   "keywords": [],
   "author": "Brad",

@@ -6,7 +6,7 @@ import { now } from '../utils/time.js';
 import Anthropic from '@anthropic-ai/sdk';
 import ibkr from '../ibkr/connection.js';
 import { getAccountPortfolioSnapshot } from '../ibkr/account.js';
-import { resolveInstrumentMetadata, describeSecurityType } from '../ibkr/instruments.js';
+import { resolveInstrumentMetadata, describeSecurityType, getCachedInstrumentMetadataBySymbols } from '../ibkr/instruments.js';
 import { submitOrder } from '../ibkr/orders.js';
 config();
 
@@ -527,6 +527,12 @@ function pageShell(title, current, body) {
     .instr-name { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
     .type-pill { font-size: 12px; color: var(--text-dim); }
     .cur-pill { font-size: 11px; color: var(--text-faint); }
+    /* Recent Decisions note — several lines of wrapped text instead of a
+       220px single-line ellipsis. line-clamp caps a very long note at 3
+       lines without ballooning the row; full text is still on the tr via
+       title="" for hover. */
+    .note-cell { max-width: 480px; font-size: 12px; color: var(--text-dim); line-height: 1.45;
+      white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
     label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; font-weight: 600; }
     textarea, input[type=number] {
       width: 100%; border: 1px solid var(--border-input); border-radius: 5px; padding: 8px 10px;
@@ -793,20 +799,52 @@ app.get('/signals', (req, res) => {
     }
   }
   db.close();
- 
+
+  // Cache-only instrument names for these ticker-only signal rows — never a
+  // live IBKR lookup, and never a guess: a ticker only gets a name here if
+  // exactly one cached conId maps to it. A failed/empty lookup never blocks
+  // page render; cards just fall back to the ticker.
+  let instrumentMetaMap;
+  try {
+    instrumentMetaMap = getCachedInstrumentMetadataBySymbols(
+      [...pending, ...recent].map(sig => sig.ticker)
+    );
+  } catch (err) {
+    console.error(`[${now()}] /signals instrument metadata error:`, err.message);
+    instrumentMetaMap = new Map();
+  }
+  const nameFor = (ticker) =>
+    instrumentMetaMap.get(String(ticker || '').trim().toUpperCase())?.longName || null;
+
+  // "Jun 17, 2026" instead of the raw ISO timestamp — display only, the
+  // stored fired_at/acted_on_at values are untouched. Eastern Time so a UTC
+  // timestamp near midnight doesn't roll into the wrong local calendar date.
+  function formatDateOnly(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    return d.toLocaleDateString('en-US', {
+      timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric'
+    });
+  }
+
   // ── Signal card (pending) ────────────────────────────────────────────────
   function signalCard(sig) {
     const snap      = contextMap[sig.id];
     const dirBadge  = `<span class="badge ${sig.direction === 'BUY' ? 'badge-buy' : 'badge-sell'}">${escHtml(sig.direction || '—')}</span>`;
- 
+    const longName  = nameFor(sig.ticker);
+
     return `
       <div class="card" id="signal-${sig.id}">
- 
+
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-          <span style="font-size:20px;font-weight:700;color:var(--text-strong);">${escHtml(sig.ticker)}</span>
+          <div>
+            <div class="instr-ticker" style="font-size:20px;font-weight:700;">${escHtml(sig.ticker)}</div>
+            ${longName ? `<div class="instr-name">${escHtml(longName)}</div>` : ''}
+          </div>
           ${dirBadge}
           <span style="font-size:12px;color:var(--text-xfaint);">${escHtml(sig.signal_type || '')}</span>
-          <span style="margin-left:auto;font-size:12px;color:var(--text-faint);">${escHtml(sig.fired_at)}</span>
+          <span style="margin-left:auto;font-size:12px;color:var(--text-faint);">${escHtml(formatDateOnly(sig.fired_at))}</span>
         </div>
 
         ${sig.trigger_reason ? `
@@ -871,31 +909,33 @@ app.get('/signals', (req, res) => {
  
   // ── Recent decisions table ───────────────────────────────────────────────
   function recentRow(sig) {
-    const dir = sig.direction || '—';
+    const dir      = sig.direction || '—';
+    const longName = nameFor(sig.ticker);
     return `<tr>
-      <td style="font-weight:600;">${escHtml(sig.ticker)}</td>
+      <td>
+        <div class="instr-ticker">${escHtml(sig.ticker)}</div>
+        ${longName ? `<div class="instr-name">${escHtml(longName)}</div>` : ''}
+      </td>
       <td><span class="badge ${dir === 'BUY' ? 'badge-buy' : 'badge-sell'}">${escHtml(dir)}</span></td>
       <td><span class="badge badge-${sig.status}">${escHtml(sig.status)}</span></td>
-      <td style="font-size:12px;color:var(--text-subtle);">${escHtml(sig.acted_on_at || sig.fired_at || '—')}</td>
-      <td style="font-size:12px;color:var(--text-dim);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-        ${escHtml(sig.human_note || '—')}
-      </td>
+      <td style="font-size:12px;color:var(--text-subtle);white-space:nowrap;">${escHtml(formatDateOnly(sig.acted_on_at || sig.fired_at))}</td>
+      <td class="note-cell" title="${escHtml(sig.human_note || '')}">${escHtml(sig.human_note || '—')}</td>
     </tr>`;
   }
- 
+
   const pendingSection = pending.length > 0
     ? pending.map(signalCard).join('')
     : `<div class="empty-state">
          No pending signals.<br>
          <span style="font-size:12px;">The default is no action.</span>
        </div>`;
- 
+
   const recentSection = recent.length > 0 ? `
     <p class="section-heading">Recent decisions</p>
     <div class="card" style="padding:0;overflow:hidden;">
       <table>
         <thead><tr>
-          <th>Ticker</th><th>Dir</th><th>Status</th><th>Decided</th><th>Note</th>
+          <th>Instrument</th><th>Direction</th><th>Status</th><th>Decided</th><th>Note</th>
         </tr></thead>
         <tbody>${recent.map(recentRow).join('')}</tbody>
       </table>
@@ -913,12 +953,12 @@ app.get('/signals', (req, res) => {
         const conv = document.querySelector('input[name="conv-' + id + '"]:checked')?.value;
         const qty  = parseFloat(document.getElementById('qty-'  + id)?.value);
         const note = document.getElementById('note-' + id)?.value?.trim();
- 
+
         clearMsgs(id);
         if (!ca)           return showErr(id, 'Counter-argument is required before approving.');
         if (!conv)         return showErr(id, 'Conviction level is required.');
         if (!qty || qty < 1) return showErr(id, 'Enter a valid share quantity.');
- 
+
         setLoading(id, true);
         try {
           const r = await fetch('/api/signals/' + id + '/approve', {
@@ -929,15 +969,12 @@ app.get('/signals', (req, res) => {
           const d = await r.json();
           if (d.error) return showErr(id, d.error);
           showOk(id, 'Approved. Order queued — check Trades for status.');
-          document.getElementById('signal-' + id).style.opacity = '0.5';
-          document.getElementById('signal-' + id).style.pointerEvents = 'none';
+          completeSignalCard(id);
         } catch {
           showErr(id, 'Network error. Try again.');
-        } finally {
-          setLoading(id, false);
         }
       }
- 
+
       async function passSignal(id) {
         const note = document.getElementById('note-' + id)?.value?.trim();
         clearMsgs(id);
@@ -951,15 +988,39 @@ app.get('/signals', (req, res) => {
           const d = await r.json();
           if (d.error) return showErr(id, d.error);
           showOk(id, 'Passed. Inaction logged.');
-          document.getElementById('signal-' + id).style.opacity = '0.5';
-          document.getElementById('signal-' + id).style.pointerEvents = 'none';
+          completeSignalCard(id);
         } catch {
           showErr(id, 'Network error. Try again.');
-        } finally {
-          setLoading(id, false);
         }
       }
- 
+
+      // Shared post-decision UX for both approveSignal() and passSignal():
+      // the card stays on screen (disabled) long enough for the confirmation
+      // message to register, then collapses, then the page reloads so
+      // pending count / Recent Decisions reconcile from the server. Only
+      // called after the API call has already succeeded.
+      function completeSignalCard(id) {
+        setLoading(id, true);
+        const card = document.getElementById('signal-' + id);
+        if (card) card.style.pointerEvents = 'none';
+        setTimeout(() => {
+          if (card) {
+            card.style.overflow = 'hidden';
+            card.style.transition = 'opacity 0.4s ease, max-height 0.4s ease, margin-bottom 0.4s ease, padding 0.4s ease';
+            card.style.maxHeight = card.offsetHeight + 'px';
+            card.offsetHeight; // force reflow so the transition has a starting point
+            requestAnimationFrame(() => {
+              card.style.opacity = '0';
+              card.style.maxHeight = '0';
+              card.style.marginBottom = '0';
+              card.style.paddingTop = '0';
+              card.style.paddingBottom = '0';
+            });
+          }
+          setTimeout(() => window.location.reload(), 400);
+        }, 2000);
+      }
+
       function setLoading(id, on) {
         document.querySelectorAll('#signal-' + id + ' .btn')
           .forEach(b => b.disabled = on);
