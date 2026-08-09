@@ -8,6 +8,7 @@ import ibkr from '../ibkr/connection.js';
 import { getAccountPortfolioSnapshot } from '../ibkr/account.js';
 import { resolveInstrumentMetadata, describeSecurityType, getCachedInstrumentMetadataBySymbols } from '../ibkr/instruments.js';
 import { submitOrder } from '../ibkr/orders.js';
+import { escHtml } from './html-escape.js';
 config();
 
 const app = express();
@@ -351,11 +352,6 @@ function renderAnnotationThread(annotations) {
     </div>
   `).join('');
   return `<div class="ann-thread"><h3>Annotations</h3>${items}</div>`;
-}
-
-function escHtml(s) {
-  if (!s) return '';
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function navHtml(current = '') {
