@@ -572,7 +572,7 @@ function pageShell(title, current, body) {
       border-bottom: 1px solid var(--border);
       margin-bottom: 28px;
     }
-    .nav-brand { font-weight: 700; color: var(--text-strong); text-decoration: none; }
+    .nav-brand { font-weight: 700; color: var(--text-strong); text-decoration: none; font-size: 16px; }
     .nav-link { color: var(--text-dim); font-weight: 400; text-decoration: none; }
     .nav-link.active { color: var(--text-strong); font-weight: 600; }
     .nav-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
