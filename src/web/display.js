@@ -30,3 +30,19 @@ export function formatDateOnly(iso) {
     timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric'
   });
 }
+
+// "Friday, August 7, 2026" from a stored YYYY-MM-DD market date. Parses the
+// date-only string by hand and renders it in the UTC calendar (not
+// America/New_York) so the weekday/day can never shift across a timezone
+// boundary the way `new Date('2026-08-07')` would under an Eastern offset.
+export function formatMarketDate(dateOnly) {
+  if (!dateOnly) return '—';
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateOnly);
+  if (!match) return String(dateOnly);
+  const [, year, month, day] = match;
+  const d = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  if (isNaN(d.getTime())) return String(dateOnly);
+  return d.toLocaleDateString('en-US', {
+    timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+  });
+}

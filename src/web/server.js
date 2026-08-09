@@ -7,7 +7,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import ibkr from '../ibkr/connection.js';
 import { getAccountPortfolioSnapshot } from '../ibkr/account.js';
 import { resolveInstrumentMetadata, describeSecurityType, getCachedInstrumentMetadataBySymbols } from '../ibkr/instruments.js';
-import { formatDateOnly, formatOrderType } from './display.js';
+import { formatDateOnly, formatMarketDate, formatOrderType } from './display.js';
 import { submitOrder } from '../ibkr/orders.js';
 import { escHtml } from './html-escape.js';
 config();
@@ -651,7 +651,7 @@ app.get('/', (req, res) => {
   const body = `
     <h1>Fane Market Intelligence</h1>
     ${latest ? `
-      <p class="meta">Briefing for ${latest.date}</p>
+      <p class="meta">Briefing for ${formatMarketDate(latest.date)}</p>
       <div class="stat-row">
         <div class="stat"><div class="stat-label">S&amp;P 500</div><div class="stat-value">${latest.sp500_close?.toLocaleString()}</div></div>
         <div class="stat"><div class="stat-label">TSX</div><div class="stat-value">${latest.tsx_close?.toLocaleString()}</div></div>
@@ -686,7 +686,7 @@ app.get('/briefing/:date', (req, res) => {
   }
 
   const body = `
-    <h2>${snapshot.date}</h2>
+    <h2>${formatMarketDate(snapshot.date)}</h2>
     <div class="briefing">${marked(snapshot.briefing_text)}</div>
     ${renderAnnotationThread(annotations)}
     ${annotationScript(snapshot.date, snapshot.briefing_text || '')}`;

@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from 'dotenv';
 import { formatInstrumentLabel } from '../ibkr/instruments.js';
+import { formatMarketDate } from '../web/display.js';
 
 config();
 
@@ -20,6 +21,8 @@ export async function generateBriefing(snapshot, positions = [], recentBriefings
   const recentTopicsText = recentBriefings.length > 0
     ? recentBriefings.map((t, i) => `${i + 1}. ${t}`).join('\n')
     : 'None yet.';
+
+  const humanReadableDate = formatMarketDate(snapshot.date);
 
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -44,6 +47,9 @@ ${recentTopicsText}
 Generate a morning market briefing based on this data:
 
 Date: ${snapshot.date}
+Human-readable date: ${humanReadableDate}
+
+Title the briefing exactly: Morning Market Briefing | ${humanReadableDate}
 
 Equities:
 - S&P 500: ${snapshot.sp500.price} (${snapshot.sp500.change_pct}%)
