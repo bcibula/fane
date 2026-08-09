@@ -510,6 +510,14 @@ function pageShell(title, current, body) {
     .badge-error     { background: #fdecea; color: #b91c1c; }
     .badge-killed    { background: #fdecea; color: #b91c1c; }
     .info-dot { cursor: help; color: var(--text-faint); font-size: 10px; margin-left: 3px; }
+    /* Positions summary cards only — scoped so the shared .stat/.stat-label
+       rules above (also used by the Briefing page's S&P/TSX/VIX cards)
+       stay untouched. */
+    .pos-stat { padding: 18px 20px 20px; }
+    .pos-stat .stat-label { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .pos-stat .stat-label-text { line-height: 1.35; }
+    .pos-stat .info-dot { flex-shrink: 0; margin-left: 0; margin-top: 1px; }
+    .pos-stat .stat-value { font-size: 21px; padding-top: 2px; }
     .instr-ticker { font-weight: 600; color: var(--text-strong); }
     .instr-name { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
     .type-pill { font-size: 12px; color: var(--text-dim); }
@@ -1031,6 +1039,27 @@ app.get('/positions', async (req, res) => {
     });
   }
 
+  // Whole-dollar formatting for the top summary cards only — the positions
+  // table below keeps fmt()'s full precision.
+  function fmtWhole(val) {
+    return fmt(val, 0);
+  }
+
+  // "Aug 8, 2026 at 8:45 PM ET" instead of the raw ISO fetchedAt timestamp.
+  // Display only — the underlying value stored/passed around stays the
+  // ISO string from time.js.
+  function formatFetchedAt(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    const datePart = d.toLocaleDateString('en-US', {
+      timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric'
+    });
+    const timePart = d.toLocaleTimeString('en-US', {
+      timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true
+    });
+    return `${datePart} at ${timePart} ET`;
+  }
+
   function fmtSigned(val, dec = 2) {
     if (val == null) return '—';
     const sign = val > 0 ? '+' : val < 0 ? '−' : '';
@@ -1062,19 +1091,22 @@ app.get('/positions', async (req, res) => {
 
   function statCard(label, valueHtml, tooltipKey, style = '') {
     return `
-      <div class="stat">
-        <div class="stat-label">${label} <span class="info-dot" title="${escHtml(TOOLTIPS[tooltipKey])}">ⓘ</span></div>
+      <div class="stat pos-stat">
+        <div class="stat-label">
+          <span class="stat-label-text">${label}</span>
+          <span class="info-dot" title="${escHtml(TOOLTIPS[tooltipKey])}">ⓘ</span>
+        </div>
         <div class="stat-value" style="${style}">${valueHtml}</div>
       </div>`;
   }
 
   const summaryRow = `
     <div class="stat-row">
-      ${statCard('Net Liquidation', '$' + fmt(v.NetLiquidation?.value), 'netLiq')}
-      ${statCard('Cash', '$' + fmt(v.TotalCashValue?.value), 'cash')}
-      ${statCard('Buying Power', '$' + fmt(v.BuyingPower?.value), 'buying')}
-      ${statCard('Unrealized P&amp;L', '$' + fmt(v.UnrealizedPnL?.value), 'unrealized', pnlStyle(v.UnrealizedPnL?.value))}
-      ${statCard('Realized P&amp;L', '$' + fmt(v.RealizedPnL?.value), 'realized', pnlStyle(v.RealizedPnL?.value))}
+      ${statCard('Net Liquidation', '$' + fmtWhole(v.NetLiquidation?.value), 'netLiq')}
+      ${statCard('Cash', '$' + fmtWhole(v.TotalCashValue?.value), 'cash')}
+      ${statCard('Buying Power', '$' + fmtWhole(v.BuyingPower?.value), 'buying')}
+      ${statCard('Unrealized P&amp;L', '$' + fmtWhole(v.UnrealizedPnL?.value), 'unrealized', pnlStyle(v.UnrealizedPnL?.value))}
+      ${statCard('Realized P&amp;L', '$' + fmtWhole(v.RealizedPnL?.value), 'realized', pnlStyle(v.RealizedPnL?.value))}
     </div>`;
 
   function positionRow(p) {
@@ -1107,7 +1139,7 @@ app.get('/positions', async (req, res) => {
 
   const body = `
     <h1>Positions</h1>
-    <p class="meta">Live from IB Gateway · account ${escHtml(snapshot.account)} · fetched ${escHtml(fetchedAt)}</p>
+    <p class="meta">Live from IB Gateway · account ${escHtml(snapshot.account)} · fetched ${escHtml(formatFetchedAt(fetchedAt))}</p>
     ${summaryRow}
     <div class="card" style="padding:0;overflow:hidden;">
       <table>
