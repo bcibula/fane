@@ -514,10 +514,15 @@ function pageShell(title, current, body) {
        rules above (also used by the Briefing page's S&P/TSX/VIX cards)
        stay untouched. */
     .pos-stat { padding: 18px 20px 20px; }
-    .pos-stat .stat-label { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    /* Fixed label-region height, sized for two lines at this font-size/
+       line-height — a one-line label (e.g. "Cash") reserves the same
+       vertical space as a wrapped two-line label (e.g. "Net Liquidation"),
+       so every card's value row starts at the same vertical position
+       regardless of how its label wraps. */
+    .pos-stat .stat-label { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; min-height: 30px; margin-bottom: 12px; }
     .pos-stat .stat-label-text { line-height: 1.35; }
     .pos-stat .info-dot { flex-shrink: 0; margin-left: 0; margin-top: 1px; }
-    .pos-stat .stat-value { font-size: 21px; padding-top: 2px; }
+    .pos-stat .stat-value { font-size: 21px; padding-top: 4px; }
     .instr-ticker { font-weight: 600; color: var(--text-strong); }
     .instr-name { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
     .type-pill { font-size: 12px; color: var(--text-dim); }
