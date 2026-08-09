@@ -6,6 +6,66 @@
 ## 2026-08-08
 
 ### What changed
+- Brad explicitly overrode the prior sequencing for this session: make the Fane website genuinely useful first, then return to Phase 1 Year 1 market learning. Stage 3 signal detection remains deferred.
+- Completed the Positions page as a useful portfolio-learning view. Fane now uses a live IBKR portfolio snapshot with current price, market value, unrealized gain/loss, return percentage, human-readable instrument names, learner-facing security types, and aligned summary cards. Implementation commits: bfccd0f, 21948f9, 2425690, 6daf1ec.
+- Completed the Signals Stage 2.5 usability pass. Added human-readable instrument names from the cache-only shared metadata mechanism, readable dates, improved decision-note presentation, pending-card dismissal behavior, and corrected HTML escaping for quoted note text. Implementation commits: 9fa12ba and cb3f9c3.
+- Completed the current Trades presentation/usability pass. Orders and trade records now use human-readable instrument names, plain-language order types, readable dates, and semantically correct "Trade records" wording rather than incorrectly implying every row is a closed trade. Implementation commits: a31810e5, b87d7ea, and 6645336. Brad explicitly does not consider the Trades page conceptually finished.
+- Brad initiated a paper AAPL purchase intended to bring the holding from 1 share to 10 shares. Decision record: thesis "I want all stocks to be the same 10 shares"; counter-argument documented that equal share counts do not mean equal exposure; conviction low; flinch none. Signal 31 produced order 31 for BUY 9 AAPL MKT in paper account DUQ828227. The order was queued for the Monday market open and had not filled by session close.
+- Added shared IBKR-backed instrument metadata to future briefing generation so first meaningful mentions can use "Name (TICKER)" with safe ticker-only fallback. Historical briefings were not rewritten. Commit 82d3de9.
+- Made the global Fane navigation persistent while scrolling, made the Fane brand clickable, and added an easy Repo ↗ link to the canonical GitHub repository while preserving IBKR status and Kill behavior. Commit 2c89062.
+- Slightly enlarged the Fane brand to 16px after visual review. Commit 2e726ad.
+- Added weekday-aware market-date presentation. The current UI now shows dates such as "Briefing for Friday, August 7, 2026"; future generated briefing titles are supplied a code-computed weekday/date rather than relying on the LLM to calculate it. Historical stored briefing text remains unchanged. Commit 1bec291.
+- Established the direction for a Fane Home dashboard. Its primary question should be "What needs my attention in Fane right now?" and it should aggregate and direct rather than duplicate detailed pages. Candidate areas are latest briefing, portfolio, pending decisions, recent order/trade state, and learning continuity.
+- Expanded the annotation/open-thread concept into a longer-term Fane Learning Graph direction. Raw provenance remains immutable; derived concepts, relationships, summaries, unresolved questions, and evidence of learning remain rebuildable. The conceptual progression is Annotation → Thread → Concept → Connections → Learning history. Obsidian may later be an optional projection/visualization layer, but Fane remains the source of truth.
+- A live VPS connectivity incident interrupted the briefing-weekday Claude Code task. The VPS itself remained healthy, but tailscaled progressively became nonresponsive, local `tailscale status` hung, a normal tailscaled restart timed out, and the replacement process entered uninterruptible D-state. Because Claude Code was unreachable on the affected VPS, Brad explicitly approved a one-time read-only/manual recovery exception through the Hetzner console. A controlled VPS reboot restored Tailscale and SSH connectivity. The interrupted uncommitted briefing work survived the reboot intact and Claude Code subsequently completed and committed it.
+- The one-time manual VPS recovery exception ended when normal connectivity returned; the normal ChatGPT-thinking / Claude-Code-execution responsibility split remains in force.
+
+### Open
+- Perform a short read-only post-reboot VPS health check before new implementation work: verify Tailscale responsiveness, SSH, fane.service, fane-briefing.timer, IB Gateway/IBC, disk/memory, obvious boot failures, and repository cleanliness. Do not pursue a deeper tailscaled/kernel root-cause investigation unless the failure recurs.
+- Verify the next legitimate Monday briefing after 9am ET: confirm human-readable instrument names appear as intended, the weekday-aware generated title is correct, and the scheduled briefing completed normally. A reminder is scheduled for Monday morning.
+- Verify paper AAPL order 31 after the Monday open: confirm the 9-share fill, fill price, trade record, and resulting 10-share AAPL holding. A reminder is scheduled for Monday after the market has opened.
+- Design and build the initial Fane Home dashboard after the post-reboot health check. Keep it small, useful, and based on information Fane already possesses. `/` should ultimately become Home and Briefing should move to its own natural route.
+- Revisit the Trades page purpose and information hierarchy. Brad wants the Orders and Trade Records tables to align more effectively and wants the page redesigned around the questions a human actually asks rather than around database tables.
+- Before the first deliberate position-closing SELL, review and implement the trade-close lifecycle. Current fill handling creates an entry-side trade record; no verified path currently populates exit date/price and realized P&L when a position closes.
+- Continue the Fane Learning Graph design when annotation/learning work resumes, including threaded follow-up discussion anchored to briefing passages and optional Obsidian projection/integration.
+- Design a Manual Order path for Brad-originated paper trades without requiring an artificial signal while preserving thesis, counter-argument, conviction, flinch, and human approval.
+- Consider future inflation-adjusted/real-return performance views. Preserve broker Gain/Loss as accounting truth; potential hierarchy is nominal return → CAD return → Canadian real return.
+- Harden multi-account IBKR behavior in the future: current managed-account selection can choose the first account if multiple are present; fail closed or require explicit selection before multi-account use matters.
+- Deliberately review whether Claude Code should receive narrowly scoped permission to restart fane.service without interactive sudo. Do not broaden sudo privileges opportunistically.
+- Investigate recurring canonical SESSIONS.md retrieval truncation during bootstrap. Bounded-range retrieval is a safe fallback, but repeated truncation remains session friction.
+- Remove or reconcile the obsolete Then Update Git / `git add -A` block in PROMPTS.md without reopening the validated bootstrap design.
+- Stage 3 signal-detection architecture remains deferred. Current sequencing is website usefulness first, then Phase 1 Year 1 learning, with Stage 3 still deferred until deliberately reopened.
+- External IBKR watchdog remains port-liveness based. Fane detects API unresponsiveness internally, but that signal is not integrated with watchdog recovery or Telegram notification. Do not add automatic recovery without a separate design decision.
+- IBKR read-only/trading-capability state detection remains separate from general API responsiveness and is parked for reconsideration before Stage 3.
+- Dedicated monitoring for silent IBC authentication or forced-password-rotation failures still does not exist.
+- Market snapshot dynamic price feed remains designed but not implemented.
+- Morning question engine remains designed but not implemented.
+- Verify `extractLearnSection()` topic extraction.
+- Fix the briefing-page left-margin alignment bug.
+- Migrate the remaining navigation and signal-card inline styles to CSS custom properties when convenient.
+- Complete the deferred dark-mode aesthetic pass for colours and fonts.
+- Evaluate a hash-chained audit trail at Stage 5.
+- Conduct a dedicated PRINCIPLES.md catch-up review.
+- Operationalize Principle 10 by mechanically surfacing principles, Year 1 topics, and reading recommendations in Fane.
+- Annotations page build remains pending Stage 3 and schema verification.
+- Fix annotation Markdown rendering in `renderAnnotationThread` and `appendThread`.
+- Complete annotation cleanup: deletion, highlight spans, and short-text selection.
+- Review the annotation API model for cost and quality alignment.
+- Conduct a dedicated working-model review session.
+- Continue OTEX, comparable-company, and FAANG watchlist work.
+- Explore how LLM humour works mechanically as an OpenClaw Track 2 question.
+- Explore the confidence-calibration and tracing-layer product concept.
+- Verify in Brad's delivered inbox that the live briefing email contains the moved "View full briefing online" link; code/template and successful-send path are verified, but rendered inbox content has not been directly checked.
+- Determine the status of migrating historical fane.db data from the old VM to the VPS; current evidence remains suggestive but not conclusive.
+- Decide whether OpenClaw filesystem permissions should be applied now that they are confirmed absent.
+- Investigate the OpenClaw `gateway.controlUi.allowInsecureAuth=true` warning read-only before deciding whether any configuration change is appropriate.
+
+### Next
+- Start the next Fane session with the short read-only post-reboot VPS health check. If healthy, resume the website-usability sequence with Home dashboard design/build while preserving the Monday briefing and AAPL-order verification items. After the website reaches a genuinely useful baseline, return to Phase 1 Year 1 market learning. Stage 3 remains deferred.
+
+## 2026-08-08
+
+### What changed
 - Reworked Fane session ergonomics at the ChatGPT Project layer without reopening or weakening the validated canonical bootstrap design.
 - Added thin Fane Project instructions that automatically enforce the established responsibility split: ChatGPT remains the thinking/review/planning layer; Claude Code remains the execution, repository-write, deployment, command, and live-VPS layer.
 - Added automatic per-chat bootstrap behavior. A new Fane chat must confirm Brad's date, retrieve canonical BOOTSTRAP.md from main, execute it fail-closed, and recover continuation state from canonical SESSIONS.md. Brad no longer needs to paste PROMPT 2 or the previous-session handoff into ChatGPT.
