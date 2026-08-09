@@ -7,6 +7,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import ibkr from '../ibkr/connection.js';
 import { getAccountPortfolioSnapshot } from '../ibkr/account.js';
 import { resolveInstrumentMetadata, describeSecurityType, getCachedInstrumentMetadataBySymbols } from '../ibkr/instruments.js';
+import { formatDateOnly, formatOrderType } from './display.js';
 import { submitOrder } from '../ibkr/orders.js';
 import { escHtml } from './html-escape.js';
 config();
@@ -812,18 +813,6 @@ app.get('/signals', (req, res) => {
   const nameFor = (ticker) =>
     instrumentMetaMap.get(String(ticker || '').trim().toUpperCase())?.longName || null;
 
-  // "Jun 17, 2026" instead of the raw ISO timestamp — display only, the
-  // stored fired_at/acted_on_at values are untouched. Eastern Time so a UTC
-  // timestamp near midnight doesn't roll into the wrong local calendar date.
-  function formatDateOnly(iso) {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return String(iso);
-    return d.toLocaleDateString('en-US', {
-      timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric'
-    });
-  }
-
   // ── Signal card (pending) ────────────────────────────────────────────────
   function signalCard(sig) {
     const snap      = contextMap[sig.id];
@@ -1231,24 +1220,48 @@ app.get('/trades', (req, res) => {
     SELECT * FROM trades ORDER BY entry_date DESC LIMIT 50
   `).all();
   db.close();
- 
+
+  // Cache-only instrument names for these ticker-only rows — never a live
+  // IBKR lookup, and never a guess: a ticker only gets a name here if
+  // exactly one cached conId maps to it. A failed/empty lookup never blocks
+  // page render; rows just fall back to the ticker.
+  let instrumentMetaMap;
+  try {
+    instrumentMetaMap = getCachedInstrumentMetadataBySymbols(
+      [...orders, ...trades].map(row => row.ticker)
+    );
+  } catch (err) {
+    console.error(`[${now()}] /trades instrument metadata error:`, err.message);
+    instrumentMetaMap = new Map();
+  }
+  const nameFor = (ticker) =>
+    instrumentMetaMap.get(String(ticker || '').trim().toUpperCase())?.longName || null;
+
+  function instrumentCell(ticker) {
+    const longName = nameFor(ticker);
+    return `<td>
+      <div class="instr-ticker">${escHtml(ticker)}</div>
+      ${longName ? `<div class="instr-name">${escHtml(longName)}</div>` : ''}
+    </td>`;
+  }
+
   function orderRow(o) {
     const dir = o.direction || '—';
     return `<tr>
-      <td style="font-weight:600;">${escHtml(o.ticker)}</td>
+      ${instrumentCell(o.ticker)}
       <td><span class="badge ${dir === 'BUY' ? 'badge-buy' : 'badge-sell'}">${escHtml(dir)}</span></td>
       <td>${o.quantity ?? '—'}</td>
-      <td style="font-size:12px;color:#888;">${escHtml(o.order_type || 'MKT')}</td>
+      <td style="font-size:12px;color:#888;">${escHtml(formatOrderType(o.order_type))}</td>
       <td><span class="badge badge-${o.status}">${escHtml(o.status)}</span></td>
       <td>${o.filled_price != null ? '$' + Number(o.filled_price).toFixed(2) : '—'}</td>
-      <td style="font-size:12px;color:#999;">${escHtml(o.approved_at || o.created_at)}</td>
+      <td style="font-size:12px;color:#999;">${escHtml(formatDateOnly(o.approved_at || o.created_at))}</td>
     </tr>`;
   }
- 
+
   function tradeRow(t) {
     const dir = t.direction || '—';
     return `<tr>
-      <td style="font-weight:600;">${escHtml(t.ticker)}</td>
+      ${instrumentCell(t.ticker)}
       <td><span class="badge ${dir === 'BUY' ? 'badge-buy' : 'badge-sell'}">${escHtml(dir)}</span></td>
       <td>${t.position_size ?? '—'}</td>
       <td>${t.entry_price != null ? '$' + Number(t.entry_price).toFixed(2) : '—'}</td>
@@ -1256,41 +1269,41 @@ app.get('/trades', (req, res) => {
       <td style="${t.pnl != null ? (t.pnl >= 0 ? 'color:#1a7f3c;' : 'color:#b91c1c;') + 'font-weight:600;' : ''}">
         ${t.pnl != null ? '$' + Number(t.pnl).toFixed(2) : '—'}
       </td>
-      <td style="font-size:12px;color:#999;">${escHtml(t.entry_date || '—')}</td>
+      <td style="font-size:12px;color:#999;">${escHtml(formatDateOnly(t.entry_date))}</td>
     </tr>`;
   }
- 
+
   const emptyRow = (cols, msg) =>
     `<tr><td colspan="${cols}" style="text-align:center;color:#999;padding:28px 0;">${msg}</td></tr>`;
- 
+
   const body = `
     <h1>Trades</h1>
     <p class="meta">Orders and completed positions</p>
- 
+
     <h2>Orders</h2>
     <div class="card" style="padding:0;overflow:hidden;">
       <table>
         <thead><tr>
-          <th>Ticker</th><th>Dir</th><th>Qty</th><th>Type</th><th>Status</th><th>Fill Price</th><th>Approved</th>
+          <th>Instrument</th><th>Direction</th><th>Shares</th><th>Type</th><th>Status</th><th>Fill Price</th><th>Approved</th>
         </tr></thead>
         <tbody>
           ${orders.length > 0 ? orders.map(orderRow).join('') : emptyRow(7, 'No orders yet.')}
         </tbody>
       </table>
     </div>
- 
+
     <p class="section-heading">Closed trades</p>
     <div class="card" style="padding:0;overflow:hidden;">
       <table>
         <thead><tr>
-          <th>Ticker</th><th>Dir</th><th>Size</th><th>Entry</th><th>Exit</th><th>P&amp;L</th><th>Date</th>
+          <th>Instrument</th><th>Direction</th><th>Shares</th><th>Entry</th><th>Exit</th><th>P&amp;L</th><th>Date</th>
         </tr></thead>
         <tbody>
           ${trades.length > 0 ? trades.map(tradeRow).join('') : emptyRow(7, 'No closed trades yet.')}
         </tbody>
       </table>
     </div>`;
- 
+
   res.send(pageShell('Trades', '/trades', body));
 });
  
