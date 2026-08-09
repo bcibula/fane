@@ -28,6 +28,9 @@
  *     positions           — point-in-time IBKR position snapshots
  *     account_snapshots   — point-in-time account-level values (net liq, cash, P&L)
  *     orders              — IBKR order execution lifecycle
+ *
+ *   Stage 2.5 (new):
+ *     instrument_metadata — cached IBKR contract descriptive metadata (long name, stock type), keyed by conId
  */
 
 import Database from 'better-sqlite3';
@@ -235,6 +238,24 @@ export function initDb() {
 
     CREATE INDEX IF NOT EXISTS idx_orders_ibkr_order_id
       ON orders(ibkr_order_id);
+
+    -- ── Stage 2.5 table (new) ────────────────────────────────────────────────
+
+    -- Cached instrument descriptive metadata, resolved from IBKR contract
+    -- details (LongName, stock type) keyed by conId — the stable IBKR
+    -- contract identity. Populated lazily by the /positions route and reused
+    -- across pages (Signals, Trades, briefing) rather than duplicating
+    -- name lookups or hard-coding ticker → name maps in server.js.
+    CREATE TABLE IF NOT EXISTS instrument_metadata (
+      con_id       INTEGER PRIMARY KEY,  -- IB contract ID — stable unique identifier
+      symbol       TEXT NOT NULL,
+      long_name    TEXT,                 -- human-readable name, e.g. "Apple Inc."
+      sec_type     TEXT,                 -- STK, OPT, etc. (IBKR SecType)
+      stock_type   TEXT,                 -- IBKR stockType, e.g. "ETF", "COMMON" (STK only)
+      currency     TEXT,
+      exchange     TEXT,                 -- primary exchange, where useful
+      updated_at   TEXT NOT NULL
+    );
 
   `);
 

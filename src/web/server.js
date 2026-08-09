@@ -5,7 +5,8 @@ import { marked } from 'marked';
 import { now } from '../utils/time.js';
 import Anthropic from '@anthropic-ai/sdk';
 import ibkr from '../ibkr/connection.js';
-import { getAccountSnapshot } from '../ibkr/account.js';
+import { getAccountPortfolioSnapshot } from '../ibkr/account.js';
+import { resolveInstrumentMetadata, describeSecurityType } from '../ibkr/instruments.js';
 import { submitOrder } from '../ibkr/orders.js';
 config();
 
@@ -508,6 +509,11 @@ function pageShell(title, current, body) {
     .badge-cancelled { background: #f3f4f6; color: #6b7280; }
     .badge-error     { background: #fdecea; color: #b91c1c; }
     .badge-killed    { background: #fdecea; color: #b91c1c; }
+    .info-dot { cursor: help; color: var(--text-faint); font-size: 10px; margin-left: 3px; }
+    .instr-ticker { font-weight: 600; color: var(--text-strong); }
+    .instr-name { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .type-pill { font-size: 12px; color: var(--text-dim); }
+    .cur-pill { font-size: 11px; color: var(--text-faint); }
     label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; font-weight: 600; }
     textarea, input[type=number] {
       width: 100%; border: 1px solid var(--border-input); border-radius: 5px; padding: 8px 10px;
@@ -547,11 +553,14 @@ function pageShell(title, current, body) {
 }
  
 // Persist a position + account snapshot to the DB.
-// Called by GET /positions on each successful IBKR fetch.
+// Called by GET /positions on each successful IBKR fetch. Snapshot shape is
+// from getAccountPortfolioSnapshot() (src/ibkr/account.js) — accountValues
+// keyed by IBKR account-value tag, positions carrying live market
+// price/value/P&L alongside cost-basis fields.
 function persistAccountSnapshot(snapshot) {
   const db = getDb();
   try {
-    const s = snapshot.summary;
+    const v = snapshot.accountValues;
     db.prepare(`
       INSERT INTO account_snapshots
         (snapshot_at, net_liquidation, total_cash, buying_power, available_funds,
@@ -559,24 +568,25 @@ function persistAccountSnapshot(snapshot) {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       snapshot.fetchedAt,
-      s.NetLiquidation?.value     ?? null,
-      s.TotalCashValue?.value     ?? null,
-      s.BuyingPower?.value        ?? null,
-      s.AvailableFunds?.value     ?? null,
-      s.UnrealizedPnL?.value      ?? null,
-      s.RealizedPnL?.value        ?? null,
-      s.GrossPositionValue?.value ?? null,
-      s.NetLiquidation?.currency  ?? 'USD'
+      v.NetLiquidation?.value     ?? null,
+      v.TotalCashValue?.value     ?? null,
+      v.BuyingPower?.value        ?? null,
+      v.AvailableFunds?.value     ?? null,
+      v.UnrealizedPnL?.value      ?? null,
+      v.RealizedPnL?.value        ?? null,
+      v.GrossPositionValue?.value ?? null,
+      v.NetLiquidation?.currency  ?? 'USD'
     );
     for (const p of snapshot.positions) {
       db.prepare(`
         INSERT INTO positions
           (snapshot_at, account, symbol, sec_type, currency, exchange,
-           con_id, position, avg_cost)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+           con_id, position, avg_cost, market_value, unrealized_pnl)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         snapshot.fetchedAt, p.account, p.symbol, p.secType,
-        p.currency, p.exchange, p.conId, p.position, p.avgCost
+        p.currency, p.exchange, p.conId, p.position, p.avgCost,
+        p.marketValue, p.unrealizedPnl
       );
     }
   } finally {
@@ -983,7 +993,7 @@ app.get('/positions', async (req, res) => {
  
   let snapshot;
   try {
-    snapshot = await getAccountSnapshot();
+    snapshot = await getAccountPortfolioSnapshot();
     persistAccountSnapshot(snapshot);
   } catch (err) {
     console.error(`[${now()}] /positions fetch error:`, err.message);
@@ -997,10 +1007,22 @@ app.get('/positions', async (req, res) => {
       </div>`;
     return res.send(pageShell('Positions', '/positions', body));
   }
- 
-  const { positions, summary, fetchedAt } = snapshot;
-  const s = summary;
- 
+
+  const { positions, accountValues, fetchedAt } = snapshot;
+  const v = accountValues;
+
+  // Instrument name/type metadata — cache-first, conId-keyed. A failed or
+  // missing lookup for one holding never blocks the rest of the page; it
+  // just falls back to the ticker (metaFor() below).
+  let metaMap;
+  try {
+    metaMap = await resolveInstrumentMetadata(positions);
+  } catch (err) {
+    console.error(`[${now()}] /positions instrument metadata error:`, err.message);
+    metaMap = new Map();
+  }
+  const metaFor = (p) => metaMap.get(p.conId) || {};
+
   function fmt(val, dec = 2) {
     if (val == null) return '—';
     return Number(val).toLocaleString('en-US', {
@@ -1008,65 +1030,95 @@ app.get('/positions', async (req, res) => {
       maximumFractionDigits: dec
     });
   }
- 
+
+  function fmtSigned(val, dec = 2) {
+    if (val == null) return '—';
+    const sign = val > 0 ? '+' : val < 0 ? '−' : '';
+    return `${sign}$${fmt(Math.abs(val), dec)}`;
+  }
+
+  function fmtPctSigned(val, dec = 2) {
+    if (val == null) return '—';
+    const sign = val > 0 ? '+' : val < 0 ? '−' : '';
+    return `${sign}${Math.abs(val).toFixed(dec)}%`;
+  }
+
   function pnlStyle(val) {
     if (val == null) return '';
     return `color:${val >= 0 ? '#1a7f3c' : '#b91c1c'};font-weight:600;`;
   }
- 
+
+  // Brief, learner-friendly definitions — not broker documentation.
+  // Realized P&L is worded deliberately: IBKR's account-value RealizedPnL
+  // tag resets with the session rather than tracking lifetime profit, so
+  // the tooltip says so instead of implying an all-time figure.
+  const TOOLTIPS = {
+    netLiq:     'Estimated total account value if every position were sold at current prices, plus cash.',
+    cash:       'Current cash balance in the account.',
+    buying:     'Broker-calculated purchasing capacity. Not necessarily the same number as cash.',
+    unrealized: 'Current gain or loss on positions still held, at today’s prices.',
+    realized:   'Gain or loss from positions already closed. IBKR resets this figure each session, so it reflects trades closed since the last reset — not lifetime realized profit.',
+  };
+
+  function statCard(label, valueHtml, tooltipKey, style = '') {
+    return `
+      <div class="stat">
+        <div class="stat-label">${label} <span class="info-dot" title="${escHtml(TOOLTIPS[tooltipKey])}">ⓘ</span></div>
+        <div class="stat-value" style="${style}">${valueHtml}</div>
+      </div>`;
+  }
+
   const summaryRow = `
     <div class="stat-row">
-      <div class="stat">
-        <div class="stat-label">Net Liquidation</div>
-        <div class="stat-value">$${fmt(s.NetLiquidation?.value)}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Cash</div>
-        <div class="stat-value">$${fmt(s.TotalCashValue?.value)}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Buying Power</div>
-        <div class="stat-value">$${fmt(s.BuyingPower?.value)}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Unrealized P&amp;L</div>
-        <div class="stat-value" style="${pnlStyle(s.UnrealizedPnL?.value)}">
-          $${fmt(s.UnrealizedPnL?.value)}
-        </div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Realized P&amp;L</div>
-        <div class="stat-value" style="${pnlStyle(s.RealizedPnL?.value)}">
-          $${fmt(s.RealizedPnL?.value)}
-        </div>
-      </div>
+      ${statCard('Net Liquidation', '$' + fmt(v.NetLiquidation?.value), 'netLiq')}
+      ${statCard('Cash', '$' + fmt(v.TotalCashValue?.value), 'cash')}
+      ${statCard('Buying Power', '$' + fmt(v.BuyingPower?.value), 'buying')}
+      ${statCard('Unrealized P&amp;L', '$' + fmt(v.UnrealizedPnL?.value), 'unrealized', pnlStyle(v.UnrealizedPnL?.value))}
+      ${statCard('Realized P&amp;L', '$' + fmt(v.RealizedPnL?.value), 'realized', pnlStyle(v.RealizedPnL?.value))}
     </div>`;
- 
+
+  function positionRow(p) {
+    const meta       = metaFor(p);
+    const longName   = meta.longName || null;
+    const typeLabel  = describeSecurityType(meta.secType || p.secType, meta.stockType);
+    const costBasis  = p.avgCost != null ? p.avgCost * Math.abs(p.position) : null;
+    const gainPct    = (p.unrealizedPnl != null && costBasis) ? (p.unrealizedPnl / costBasis) * 100 : null;
+
+    return `
+      <tr title="${escHtml(p.exchange || '')}">
+        <td>
+          <div class="instr-ticker">${escHtml(p.symbol)}</div>
+          ${longName ? `<div class="instr-name">${escHtml(longName)}</div>` : ''}
+        </td>
+        <td class="type-pill">${escHtml(typeLabel)}</td>
+        <td>${p.position > 0 ? '+' : ''}${p.position}</td>
+        <td>$${fmt(p.avgCost)}</td>
+        <td>${p.marketPrice != null ? '$' + fmt(p.marketPrice) : '—'}</td>
+        <td>${p.marketValue != null ? '$' + fmt(p.marketValue) : '—'}</td>
+        <td style="${pnlStyle(p.unrealizedPnl)}">${fmtSigned(p.unrealizedPnl)}</td>
+        <td style="${pnlStyle(gainPct)}">${fmtPctSigned(gainPct)}</td>
+        <td class="cur-pill">${escHtml(p.currency || '')}</td>
+      </tr>`;
+  }
+
   const positionRows = positions.length > 0
-    ? positions.map(p => `
-        <tr>
-          <td style="font-weight:600;">${escHtml(p.symbol)}</td>
-          <td style="color:#888;font-size:12px;">${escHtml(p.secType || '')}</td>
-          <td>${p.position > 0 ? '+' : ''}${p.position}</td>
-          <td>$${fmt(p.avgCost)}</td>
-          <td style="font-size:12px;color:#888;">${escHtml(p.currency || '')}</td>
-          <td style="font-size:12px;color:#aaa;">${escHtml(p.exchange || '')}</td>
-        </tr>`).join('')
-    : `<tr><td colspan="6" style="text-align:center;color:#999;padding:28px 0;">No open positions.</td></tr>`;
- 
+    ? positions.map(positionRow).join('')
+    : `<tr><td colspan="9" style="text-align:center;color:#999;padding:28px 0;">No open positions.</td></tr>`;
+
   const body = `
     <h1>Positions</h1>
-    <p class="meta">Live from IB Gateway · fetched ${escHtml(fetchedAt)}</p>
+    <p class="meta">Live from IB Gateway · account ${escHtml(snapshot.account)} · fetched ${escHtml(fetchedAt)}</p>
     ${summaryRow}
     <div class="card" style="padding:0;overflow:hidden;">
       <table>
         <thead><tr>
-          <th>Symbol</th><th>Type</th><th>Shares</th><th>Avg Cost</th><th>Currency</th><th>Exchange</th>
+          <th>Instrument</th><th>Type</th><th>Shares</th><th>Avg Cost</th>
+          <th>Current Price</th><th>Market Value</th><th>Gain/Loss</th><th>Return</th><th>Cur.</th>
         </tr></thead>
         <tbody>${positionRows}</tbody>
       </table>
     </div>`;
- 
+
   res.send(pageShell('Positions', '/positions', body));
 });
  
