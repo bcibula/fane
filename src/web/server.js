@@ -1049,15 +1049,15 @@ app.get('/positions', async (req, res) => {
   }
 
   // Brief, learner-friendly definitions — not broker documentation.
-  // Realized P&L is worded deliberately: IBKR's account-value RealizedPnL
-  // tag resets with the session rather than tracking lifetime profit, so
-  // the tooltip says so instead of implying an all-time figure.
+  // Realized P&L is worded deliberately: IBKR's Account Window RealizedPnL
+  // value is documented as resetting once per day, not tracking lifetime
+  // profit, so the tooltip says so instead of implying an all-time figure.
   const TOOLTIPS = {
     netLiq:     'Estimated total account value if every position were sold at current prices, plus cash.',
     cash:       'Current cash balance in the account.',
     buying:     'Broker-calculated purchasing capacity. Not necessarily the same number as cash.',
     unrealized: 'Current gain or loss on positions still held, at today’s prices.',
-    realized:   'Gain or loss from positions already closed. IBKR resets this figure each session, so it reflects trades closed since the last reset — not lifetime realized profit.',
+    realized:   'Gain or loss from positions already closed. IBKR resets this figure once per day, so it is not lifetime realized profit.',
   };
 
   function statCard(label, valueHtml, tooltipKey, style = '') {

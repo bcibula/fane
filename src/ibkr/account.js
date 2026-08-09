@@ -46,7 +46,7 @@ const SUMMARY_TAGS = [
   'BuyingPower',        // Available buying power (paper = same as cash for stocks)
   'AvailableFunds',     // Funds available for new positions
   'UnrealizedPnL',      // Unrealized P&L across all open positions
-  'RealizedPnL',        // Realized P&L for the session
+  'RealizedPnL',        // Realized P&L (IBKR resets this once per day)
   'GrossPositionValue', // Gross market value of all open positions
 ].join(',');
 
@@ -288,6 +288,22 @@ const ACCOUNT_VALUE_KEYS = new Set([
   'GrossPositionValue',
 ]);
 
+// IBKR's updateAccountValue key that flags an in-progress account-server
+// reset. When it arrives as "false", every other value in this update (and
+// any already received in this same one-shot download) can be stale or
+// wrong — the snapshot must be rejected outright rather than returned
+// partially. Handled separately from ACCOUNT_VALUE_KEYS because it's a
+// control signal, not a value to store.
+const ACCOUNT_READY_KEY = 'AccountReady';
+
+// IBKR sends AccountReady's value as the string "true" or "false". Anything
+// else (including the key never arriving at all) is treated as ready, so a
+// live account that has never sent this key keeps working exactly as
+// before — only an explicit "false" fails the snapshot closed.
+function isAccountReadyFalse(value) {
+  return String(value).trim().toLowerCase() === 'false';
+}
+
 // IBKR represents "no value" for a double field as a sentinel near
 // Number.MAX_VALUE rather than null/undefined (confirmed against this
 // library's own decoder fixtures, e.g. 1.7976931348623157e308 for unset
@@ -370,6 +386,11 @@ function getManagedAccount() {
  * because market data isn't subscribed) does not fail the whole snapshot —
  * it comes back as `null` on that field only, via safeNumber().
  *
+ * Fails closed on an in-progress account-server reset: if AccountReady
+ * arrives as "false" for the target account, the whole snapshot is
+ * rejected — unsubscribed, listeners cleaned up, nothing returned — rather
+ * than resolving with values that IBKR itself says may be stale or wrong.
+ *
  * @returns {Promise<Object>}
  *   {
  *     account:       string,   // resolved managed account ID
@@ -391,7 +412,7 @@ function getManagedAccount() {
  *     marketPrice:   number|null,   // IBKR live market price
  *     marketValue:   number|null,   // IBKR live market value
  *     unrealizedPnl: number|null,
- *     realizedPnl:   number|null,   // session/period-reset — see PRINCIPLES.md UI note
+ *     realizedPnl:   number|null,   // IBKR resets this once per day — not lifetime profit
  *   }
  */
 export async function getAccountPortfolioSnapshot() {
@@ -419,6 +440,18 @@ export async function getAccountPortfolioSnapshot() {
 
     function onAccountValue(key, value, currency, accountName) {
       if (accountName !== account) return; // stale/unrelated event — ignore
+
+      if (key === ACCOUNT_READY_KEY) {
+        if (settled) return;
+        if (isAccountReadyFalse(value)) {
+          cleanup();
+          unsubscribe();
+          reject(new Error('IBKR account data not ready; account server is resetting. Retry shortly.'));
+        }
+        // "true" (or anything else) — normal processing continues.
+        return;
+      }
+
       if (!ACCOUNT_VALUE_KEYS.has(key)) return;
       const parsed = parseFloat(value);
       accountValues[key] = { value: isNaN(parsed) ? null : parsed, currency };

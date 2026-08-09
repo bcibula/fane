@@ -200,3 +200,80 @@ test('an IB error scoped to the account-updates request rejects and unsubscribes
 
   detach();
 });
+
+// ── AccountReady ──────────────────────────────────────────────────────────
+//
+// IBKR documents AccountReady=false as meaning the account server is mid-
+// reset — every value in that download, and anything already collected in
+// this same one-shot request, can be stale or wrong. These tests cover the
+// fail-closed contract: reject outright, never resolve with partial data.
+
+test('AccountReady=true for the target account does not disturb a normal successful snapshot', async () => {
+  const api = makeFakeApi();
+  api.reqAccountUpdates = (subscribe) => {
+    if (!subscribe) return;
+    api.emit(EventName.updateAccountValue, 'AccountReady', 'true', '', ACCOUNT);
+    api.emit(EventName.updateAccountValue, 'NetLiquidation', '100000.00', 'USD', ACCOUNT);
+    api.emit(
+      EventName.updatePortfolio,
+      { conId: 265598, symbol: 'AAPL', secType: 'STK', currency: 'USD', primaryExch: 'NASDAQ' },
+      10, 230.50, 2305.00, 200.00, 305.00, 0, ACCOUNT
+    );
+    api.emit(EventName.accountDownloadEnd, ACCOUNT);
+  };
+  attach(api);
+
+  const snapshot = await getAccountPortfolioSnapshot();
+
+  assert.equal(snapshot.accountValues.NetLiquidation.value, 100000.00);
+  assert.equal(snapshot.positions.length, 1);
+  assert.equal(snapshot.positions[0].symbol, 'AAPL');
+
+  detach();
+});
+
+test('AccountReady=false for the target account rejects the snapshot, unsubscribes exactly once, and leaves no listeners behind — even with data already collected', async () => {
+  const api = makeFakeApi();
+  const unsubscribeCalls = [];
+  api.reqAccountUpdates = (subscribe, acctCode) => {
+    if (!subscribe) { unsubscribeCalls.push(acctCode); return; }
+    // Values arrive before the reset notice — none of this may leak through.
+    api.emit(EventName.updateAccountValue, 'NetLiquidation', '100000.00', 'USD', ACCOUNT);
+    api.emit(
+      EventName.updatePortfolio,
+      { conId: 265598, symbol: 'AAPL', secType: 'STK', currency: 'USD' },
+      10, 230.50, 2305.00, 200.00, 305.00, 0, ACCOUNT
+    );
+    api.emit(EventName.updateAccountValue, 'AccountReady', 'false', '', ACCOUNT);
+    // A late accountDownloadEnd must not resolve a promise that already rejected.
+    api.emit(EventName.accountDownloadEnd, ACCOUNT);
+  };
+  attach(api);
+
+  await assert.rejects(
+    getAccountPortfolioSnapshot(),
+    /account data not ready.*resetting/i
+  );
+
+  assert.deepEqual(unsubscribeCalls, [ACCOUNT], 'must unsubscribe exactly once');
+  assertNoListenersLeft(api);
+
+  detach();
+});
+
+test('AccountReady=false for an unrelated account is ignored and does not disturb the target account\'s snapshot', async () => {
+  const api = makeFakeApi();
+  api.reqAccountUpdates = (subscribe) => {
+    if (!subscribe) return;
+    api.emit(EventName.updateAccountValue, 'AccountReady', 'false', '', 'DU_OTHER');
+    api.emit(EventName.updateAccountValue, 'NetLiquidation', '100000.00', 'USD', ACCOUNT);
+    api.emit(EventName.accountDownloadEnd, ACCOUNT);
+  };
+  attach(api);
+
+  const snapshot = await getAccountPortfolioSnapshot();
+
+  assert.equal(snapshot.accountValues.NetLiquidation.value, 100000.00);
+
+  detach();
+});
