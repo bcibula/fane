@@ -33,6 +33,12 @@ async function runDailyBriefing() {
     await sendBriefingEmail(today(), briefing);
     console.log(`[${now()}] Email delivered.`);
 
+    // This exact notes literal is consumed by Home's briefing-completion
+    // predicate (evaluateHomeAttention() in src/web/home.js), which matches
+    // on 'Briefing saved and emailed for ' + <today's Eastern date> to
+    // decide whether today's scheduled briefing reached a successful
+    // outcome. Keep the literal in sync with that match if it ever changes
+    // here.
     logRun('daily_brief', 'success', `Briefing saved and emailed for ${today()}`);
     console.log(`[${now()}] Done.`);
 

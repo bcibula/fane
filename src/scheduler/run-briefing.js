@@ -39,6 +39,11 @@ try {
   saveBriefing(today(), briefing);
   await sendBriefingEmail(today(), briefing);
 
+  // This exact notes literal is consumed by Home's briefing-completion
+  // predicate (evaluateHomeAttention() in src/web/home.js), which matches
+  // on 'Briefing saved and emailed for ' + <today's Eastern date> to decide
+  // whether today's scheduled briefing reached a successful outcome. Keep
+  // the literal in sync with that match if it ever changes here.
   const logDb = getDb();
   logDb.prepare('INSERT INTO agent_log (run_at, run_type, status, notes) VALUES (?, ?, ?, ?)').run(now(), 'daily_brief', 'success', 'Briefing saved and emailed for ' + today());
   logDb.close();

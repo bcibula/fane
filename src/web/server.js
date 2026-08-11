@@ -2,12 +2,16 @@ import express from 'express';
 import { getDb } from '../db/schema.js';
 import { config } from 'dotenv';
 import { marked } from 'marked';
-import { now } from '../utils/time.js';
+import { now, easternNow } from '../utils/time.js';
 import Anthropic from '@anthropic-ai/sdk';
 import ibkr from '../ibkr/connection.js';
 import { getAccountPortfolioSnapshot } from '../ibkr/account.js';
 import { resolveInstrumentMetadata, describeSecurityType, getCachedInstrumentMetadataBySymbols } from '../ibkr/instruments.js';
-import { formatDateOnly, formatMarketDate, formatOrderType } from './display.js';
+import {
+  formatDateOnly, formatMarketDate, formatOrderType, formatTimestamp, briefingExcerpt,
+  attentionCheckedAtMessage, attentionUndeterminedMessage, attentionPartialCaveat, attentionRenderState
+} from './display.js';
+import { evaluateHomeAttention } from './home.js';
 import { submitOrder } from '../ibkr/orders.js';
 import { escHtml } from './html-escape.js';
 config();
@@ -380,7 +384,8 @@ function navHtml(current = '') {
   }
 
   const pages = [
-    ['/',          'Briefing'],
+    ['/',          'Home'],
+    ['/briefing',  'Briefing'],
     ['/signals',   'Signals'],
     ['/positions', 'Positions'],
     ['/trades',    'Trades'],
@@ -420,8 +425,8 @@ function navHtml(current = '') {
     </script>`;
 }
  
-// Shared page shell with base CSS used by all Stage 2 routes.
-// The existing / and /briefing/:date routes keep their own styles — no changes needed there.
+// Shared page shell with base CSS used by every route, including Home and
+// the Briefing pages.
 function pageShell(title, current, body) {
   return `<!DOCTYPE html>
 <html>
@@ -558,6 +563,8 @@ function pageShell(title, current, body) {
     .msg-ok  { background: #e6f4ea; border: 1px solid #a7d7b3; color: #1a7f3c; padding: 10px 14px; border-radius: 6px; font-size: 14px; margin-top: 12px; display: none; }
     .msg-err { background: #fdecea; border: 1px solid #f5c6c6; color: #b91c1c; padding: 10px 14px; border-radius: 6px; font-size: 14px; margin-top: 12px; display: none; }
     .empty-state { color: var(--text-muted); font-size: 14px; text-align: center; padding: 40px 0; line-height: 2; }
+    .attn-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; color: var(--text); text-decoration: none; border-bottom: 1px solid var(--border-subtle); }
+    .attn-item:last-child { border-bottom: none; }
     .footer { margin-top: 40px; font-size: 12px; color: var(--text-faint); }
     .briefing { line-height: 1.7; background: var(--surface); padding: 24px; border-radius: 8px; border: 1px solid var(--border); }
     .site-nav {
@@ -567,6 +574,8 @@ function pageShell(title, current, body) {
       background: var(--bg);
       display: flex;
       align-items: center;
+      flex-wrap: wrap;
+      row-gap: 8px;
       gap: 20px;
       padding: 12px 0;
       border-bottom: 1px solid var(--border);
@@ -575,7 +584,10 @@ function pageShell(title, current, body) {
     .nav-brand { font-weight: 700; color: var(--text-strong); text-decoration: none; font-size: 16px; }
     .nav-link { color: var(--text-dim); font-weight: 400; text-decoration: none; }
     .nav-link.active { color: var(--text-strong); font-weight: 600; }
-    .nav-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+    /* On narrow viewports the links and the IBKR/Kill cluster wrap onto
+       their own rows rather than overflowing horizontally; margin-left:auto
+       still pushes nav-right flush right on whichever row it lands on. */
+    .nav-right { margin-left: auto; display: flex; align-items: center; flex-wrap: wrap; row-gap: 6px; gap: 16px; }
     .nav-repo { color: var(--text-muted); font-size: 12px; text-decoration: none; }
     .nav-repo:hover { color: var(--text-dim); }
     ${annotationStyles()}
@@ -634,7 +646,129 @@ function persistAccountSnapshot(snapshot) {
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 
+// ── GET / (Home) ────────────────────────────────────────────────────────────
+//
+// "What needs my attention in Fane right now?" Aggregates and directs
+// rather than duplicating the detailed pages: Attention (pending signals +
+// a missing expected weekday briefing), the latest Morning Briefing
+// excerpt, and the last persisted Portfolio snapshot.
+//
+// Read-only by design: every query here is a SELECT, and Portfolio reads
+// the last snapshot /positions already persisted rather than calling IBKR
+// itself — Home must never fetch live or write to the DB on its own.
+//
+// The briefing-completion check follows fane-briefing.timer's actual
+// schedule (Mon-Fri 09:00 America/New_York): before 10am ET the predicate
+// is simply skipped (still time for the 9am run plus operational margin),
+// and weekends never expect a briefing at all. The predicate itself
+// (evaluateHomeAttention() in src/web/home.js) checks the scheduled run's
+// recorded *outcome* in agent_log, not merely whether briefing content
+// exists — those are different questions.
+
 app.get('/', (req, res) => {
+  const db = getDb();
+
+  const en = easternNow();
+  const attention = evaluateHomeAttention(db, en);
+
+  const latestBriefing = db.prepare(`
+    SELECT date, briefing_text FROM market_snapshots ORDER BY date DESC LIMIT 1
+  `).get();
+
+  const latestAccount = db.prepare(`
+    SELECT snapshot_at, net_liquidation, total_cash, unrealized_pnl
+    FROM account_snapshots ORDER BY snapshot_at DESC LIMIT 1
+  `).get();
+  const positionCount = latestAccount
+    ? db.prepare(`SELECT COUNT(*) AS n FROM positions WHERE snapshot_at = ?`).get(latestAccount.snapshot_at).n
+    : 0;
+
+  db.close();
+
+  // ── Attention ─────────────────────────────────────────────────────────
+  // Renders exactly the items evaluateHomeAttention() found — see
+  // src/web/home.js for the predicates themselves and the approved
+  // Attention contract on why a failed check must never suppress an item
+  // another predicate found.
+  //
+  // Four explicit states (attentionRenderState() picks one, display.js's
+  // attention*Message() helpers hold the copy for each):
+  //   ok             — no items, nothing failed: positive "all clear".
+  //   undetermined   — no items, but something failed: Fane cannot assert
+  //                    "nothing needs attention", so it must not say so.
+  //   items          — known items, nothing failed: render them as before.
+  //   items_partial  — known items AND a failed check: render the items
+  //                    (never suppressed) plus a caveat that the list may
+  //                    be incomplete.
+  const itemsHtml = attention.items.map(item => `
+    <a href="${item.href}" class="attn-item">
+      <span>${escHtml(item.message)}</span>
+      <span style="color:var(--text-faint);">→</span>
+    </a>`).join('');
+  const itemsCard = `<div class="card" style="padding:4px 20px;">${itemsHtml}</div>`;
+
+  let attentionSection;
+  switch (attentionRenderState(attention)) {
+    case 'undetermined':
+      attentionSection = `<div class="empty-state">${escHtml(attentionUndeterminedMessage(now()))}</div>`;
+      break;
+    case 'items':
+      attentionSection = itemsCard;
+      break;
+    case 'items_partial':
+      attentionSection = `
+        <p class="meta" style="margin-bottom:10px;">${escHtml(attentionPartialCaveat(now()))}</p>
+        ${itemsCard}`;
+      break;
+    default: // 'ok'
+      attentionSection = `<div class="empty-state">${escHtml(attentionCheckedAtMessage(now()))}</div>`;
+  }
+
+  // ── Morning Briefing ──────────────────────────────────────────────────
+  const briefingSection = latestBriefing ? `
+    <div class="card">
+      <p class="meta" style="margin-bottom:10px;">${formatMarketDate(latestBriefing.date)}</p>
+      <p style="line-height:1.6;color:var(--text);margin:0 0 14px;">${escHtml(briefingExcerpt(latestBriefing.briefing_text))}</p>
+      <a href="/briefing" style="font-size:13px;color:var(--text-dim);">Read full briefing →</a>
+    </div>` : `<div class="empty-state">No briefings yet. Check back after 9am ET on a weekday.</div>`;
+
+  // ── Portfolio ─────────────────────────────────────────────────────────
+  function fmtWhole(val) {
+    if (val == null) return '—';
+    return '$' + Number(val).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  }
+  function pnlStyle(val) {
+    if (val == null) return '';
+    return `color:${val >= 0 ? '#1a7f3c' : '#b91c1c'};font-weight:600;`;
+  }
+
+  const portfolioSection = latestAccount ? `
+    <div class="stat-row">
+      <div class="stat"><div class="stat-label">Net Liquidation</div><div class="stat-value">${fmtWhole(latestAccount.net_liquidation)}</div></div>
+      <div class="stat"><div class="stat-label">Cash</div><div class="stat-value">${fmtWhole(latestAccount.total_cash)}</div></div>
+      <div class="stat"><div class="stat-label">Unrealized P&amp;L</div><div class="stat-value" style="${pnlStyle(latestAccount.unrealized_pnl)}">${fmtWhole(latestAccount.unrealized_pnl)}</div></div>
+      <div class="stat"><div class="stat-label">Positions</div><div class="stat-value">${positionCount}</div></div>
+    </div>
+    <p class="meta">Last recorded ${formatTimestamp(latestAccount.snapshot_at)} · <a href="/positions" style="color:var(--text-dim);">see live positions →</a></p>
+  ` : `<div class="empty-state">No portfolio snapshot recorded yet. Visit Positions to fetch one.</div>`;
+
+  const body = `
+    <h1>Home</h1>
+    <p class="meta">What needs your attention in Fane right now</p>
+
+    <h2>Attention</h2>
+    ${attentionSection}
+
+    <h2 style="margin-top:28px;">Morning Briefing</h2>
+    ${briefingSection}
+
+    <h2 style="margin-top:28px;">Portfolio</h2>
+    ${portfolioSection}`;
+
+  res.send(pageShell('Home', '/', body));
+});
+
+app.get('/briefing', (req, res) => {
   const db = getDb();
   const snapshots = db.prepare(`
     SELECT date, sp500_close, tsx_close, vix, briefing_text, created_at
@@ -668,7 +802,7 @@ app.get('/', (req, res) => {
       ).join('')}
     </div>`;
 
-  res.send(pageShell('Market Intelligence', '/', body));
+  res.send(pageShell('Market Intelligence', '/briefing', body));
 });
 
 app.get('/briefing/:date', (req, res) => {
@@ -691,7 +825,7 @@ app.get('/briefing/:date', (req, res) => {
     ${renderAnnotationThread(annotations)}
     ${annotationScript(snapshot.date, snapshot.briefing_text || '')}`;
 
-  res.send(pageShell(snapshot.date, '/', body));
+  res.send(pageShell(snapshot.date, '/briefing', body));
 });
 
 // ── Annotation API ───────────────────────────────────────────────────────────
@@ -1117,21 +1251,6 @@ app.get('/positions', async (req, res) => {
     return fmt(val, 0);
   }
 
-  // "Aug 8, 2026 at 8:45 PM ET" instead of the raw ISO fetchedAt timestamp.
-  // Display only — the underlying value stored/passed around stays the
-  // ISO string from time.js.
-  function formatFetchedAt(iso) {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    const datePart = d.toLocaleDateString('en-US', {
-      timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric'
-    });
-    const timePart = d.toLocaleTimeString('en-US', {
-      timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', hour12: true
-    });
-    return `${datePart} at ${timePart} ET`;
-  }
-
   function fmtSigned(val, dec = 2) {
     if (val == null) return '—';
     const sign = val > 0 ? '+' : val < 0 ? '−' : '';
@@ -1211,7 +1330,7 @@ app.get('/positions', async (req, res) => {
 
   const body = `
     <h1>Positions</h1>
-    <p class="meta">Live from IB Gateway · account ${escHtml(snapshot.account)} · fetched ${escHtml(formatFetchedAt(fetchedAt))}</p>
+    <p class="meta">Live from IB Gateway · account ${escHtml(snapshot.account)} · fetched ${escHtml(formatTimestamp(fetchedAt))}</p>
     ${summaryRow}
     <div class="card" style="padding:0;overflow:hidden;">
       <table>
