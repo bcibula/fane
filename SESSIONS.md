@@ -3,6 +3,73 @@
 
 # Sessions
 
+## 2026-08-10
+
+### What changed
+- Completed the required short post-reboot VPS health check before new implementation work. Tailscale/SSH connectivity, fane.service, fane-briefing.timer, IB Gateway/API responsiveness, disk/memory, boot health, and repository state were verified healthy. No deeper tailscaled/kernel investigation was warranted because the earlier failure had not recurred.
+- Verified the next legitimate scheduled Monday briefing. The run completed successfully; the generated title used the correct weekday-aware date; human-readable instrument names appeared as intended; the briefing was saved and emailed.
+- Verified paper AAPL order 31 after the market opened. BUY 9 AAPL MKT filled at approximately $306.95 in paper account DUQ828227, resulting in the intended 10-share AAPL holding at an average cost of approximately $307.49. The previously open AAPL-order verification item is closed.
+- Designed, implemented, live-verified, committed, and pushed Fane Home v1. Canonical commit: 5cb869443b079a92dd7c6f45a051fc36d785cc2f (`feat: add read-only Home dashboard`).
+- Home v1 makes `/` the Home dashboard and preserves the prior latest-briefing experience at `/briefing`, with historical briefings remaining at `/briefing/:date`.
+- Home v1 is intentionally small and answers the question "What needs my attention in Fane right now?" through three sections only: Attention, Morning Briefing, and Portfolio. Recent Activity, Recent System Event, Learning, charts, watchlists, news, and other dashboard expansion were explicitly excluded from v1.
+- Home Attention currently evaluates only two approved predicates: pending signals and expected weekday scheduled-briefing completion after 10:00 AM Eastern. Scheduled-briefing completion is proven through the exact `daily_brief / success` agent_log outcome rather than merely through stored market data.
+- Home now represents four Attention epistemic states explicitly: verified empty, known items, undetermined, and partial knowledge. A failed applicable check cannot silently become "nothing needs your attention," and known Attention items survive when another check fails.
+- A successfully evaluated empty Attention state is explicitly timestamped in Eastern time, for example: "Checked at Aug 10, 2026 at 10:49 PM ET. Nothing needs your attention."
+- Home Portfolio reads the latest paired persisted account/position snapshot and labels it with its stored timestamp rather than implying live IBKR data. Home performs no IBKR portfolio request and no database writes.
+- Repeated live verification confirmed Home is read-only and IBKR-silent: ten consecutive real GET `/` requests left account_snapshots, positions, signals, market_snapshots, and agent_log row counts unchanged.
+- Morning Briefing on Home uses a plain-text excerpt from the first prose paragraph only, strips headings/rules/Markdown markers, truncates at a word boundary, and links to the full `/briefing` page without bringing annotation UI onto Home.
+- Shared Eastern-time display handling was consolidated through `easternNow()` and `formatTimestamp()`. The live Positions page also uses the shared timestamp formatter.
+- Home v1 finished with 67/67 automated tests passing. Live route checks confirmed `/`, `/briefing`, and `/briefing/2026-08-10` return 200 and an unavailable historical briefing returns 404.
+- Corrected five accidental code/test references that attributed Home partial-Attention behavior to canonical Principle 11. Principle 11 concerns automatic recovery without notification; the Home behavior is now correctly described as part of the approved Attention contract. No behavior changed in that correction.
+- Established and verified a narrowly scoped standing sudo permission allowing Claude Code, as brad, to run only `/usr/bin/systemctl restart fane.service` non-interactively. `sudo -n /usr/bin/systemctl restart fane.service` succeeded repeatedly during Home verification and did not restart IB Gateway, xvfb, or the briefing timer.
+- The sudoers review also surfaced a pre-existing broader grant, `NOPASSWD: /usr/bin/tee /etc/systemd/system/*`. It was deliberately left unchanged because it was outside Home scope and deserves a separate review.
+- Brad added site-wide mobile usability, especially iPhone/Safari, as the next website-usability concern. Home was not allowed to expand into a speculative responsive redesign during this session; real narrow-screen usability remains a separate pass.
+- Brad added a future paper-trade intention to buy 10 shares of OpenText (OTEX), the company where he works. No order was placed during this session. The normal Fane decision record must precede any paper order; do not invent a thesis on Brad's behalf.
+- A possible future briefing design direction emerged: a deliberately quiet, mid-briefing LLM interpretive aperture where the model may occasionally synthesize, dissent, use metaphor or humour, or make an observation worth noticing without receiving decision authority, trading authority, alert status, or privileged placement. This remains a design idea only; no implementation was approved.
+- The session also surfaced a potentially principle-worthy idea — "influence should not masquerade as authority" — but no PRINCIPLES.md change was approved. Preserve it only for later consideration during the dedicated principles review.
+
+### Open
+- Perform the next site-wide website-usability pass with special attention to real iPhone/Safari use. Review navigation, cards, tables, typography, tap targets, horizontal overflow, annotation interactions, Positions/Signals/Trades density, and places where mobile should simplify rather than merely shrink. The previously unresolved briefing-page left-margin/alignment issue may be evaluated in this broader usability context.
+- Revisit the Trades page purpose and information hierarchy. Brad wants the Orders and Trade Records tables to align more effectively and wants the page redesigned around the questions a human actually asks rather than around database tables.
+- Before the first deliberate position-closing SELL, review and implement the trade-close lifecycle. Current fill handling creates an entry-side trade record; no verified path currently populates exit date/price and realized P&L when a position closes.
+- Continue the Fane Learning Graph design when annotation/learning work resumes, including threaded follow-up discussion anchored to briefing passages and optional Obsidian projection/integration.
+- Design a Manual Order path for Brad-originated paper trades without requiring an artificial signal while preserving thesis, counter-argument, conviction, flinch, and human approval.
+- Brad intends a future paper purchase of 10 OpenText (OTEX) shares. Do not place it without the normal Brad-originated decision record and explicit approval. Do not invent the thesis, counter-argument, conviction, or flinch.
+- Consider future inflation-adjusted/real-return performance views. Preserve broker Gain/Loss as accounting truth; potential hierarchy is nominal return → CAD return → Canadian real return.
+- Harden multi-account IBKR behavior in the future: current managed-account selection can choose the first account if multiple are present; fail closed or require explicit selection before multi-account use matters.
+- Deliberately review the pre-existing broad sudo grant `NOPASSWD: /usr/bin/tee /etc/systemd/system/*`. The new restart-only `fane.service` permission is working and should remain narrowly scoped; do not broaden it opportunistically.
+- Investigate recurring canonical SESSIONS.md retrieval truncation during bootstrap. Bounded-range/blob retrieval is a safe fallback, but repeated truncation remains session friction.
+- Remove or reconcile the obsolete Then Update Git / `git add -A` block in PROMPTS.md without reopening the validated bootstrap design.
+- Stage 3 signal-detection architecture remains deferred. Current sequencing is website usefulness first, then Phase 1 Year 1 learning, with Stage 3 still deferred until deliberately reopened.
+- External IBKR watchdog remains port-liveness based. Fane detects API unresponsiveness internally, but that signal is not integrated with watchdog recovery or Telegram notification. Do not add automatic recovery without a separate design decision.
+- IBKR read-only/trading-capability state detection remains separate from general API responsiveness and is parked for reconsideration before Stage 3.
+- Dedicated monitoring for silent IBC authentication or forced-password-rotation failures still does not exist.
+- Market snapshot dynamic price feed remains designed but not implemented.
+- Morning question engine remains designed but not implemented.
+- Verify `extractLearnSection()` topic extraction.
+- Fix the briefing-page left-margin alignment bug; it remained visually unverified in the Claude Code environment because no browser-capable rendering tool was available.
+- Migrate the remaining navigation and signal-card inline styles to CSS custom properties when convenient.
+- Complete the deferred dark-mode aesthetic pass for colours and fonts.
+- Evaluate a hash-chained audit trail at Stage 5.
+- Conduct a dedicated PRINCIPLES.md catch-up review. Include later consideration of the session idea "influence should not masquerade as authority"; no principle addition is currently approved.
+- Operationalize Principle 10 by mechanically surfacing principles, Year 1 topics, and reading recommendations in Fane.
+- Annotations page build remains pending Stage 3 and schema verification.
+- Fix annotation Markdown rendering in `renderAnnotationThread` and `appendThread`.
+- Complete annotation cleanup: deletion, highlight spans, and short-text selection.
+- Review the annotation API model for cost and quality alignment.
+- Conduct a dedicated working-model review session.
+- Continue OTEX, comparable-company, and FAANG watchlist work.
+- Explore the possible quiet mid-briefing LLM interpretive aperture only as a future design question: low-salience but attributable model synthesis/dissent/humour, with no decision or trading authority and no automatic downstream action.
+- Explore how LLM humour works mechanically as an OpenClaw Track 2 question.
+- Explore the confidence-calibration and tracing-layer product concept.
+- Verify in Brad's delivered inbox that the live briefing email contains the moved "View full briefing online" link; code/template and successful-send path are verified, but rendered inbox content has not been directly checked.
+- Determine the status of migrating historical fane.db data from the old VM to the VPS; current evidence remains suggestive but not conclusive.
+- Decide whether OpenClaw filesystem permissions should be applied now that they are confirmed absent.
+- Investigate the OpenClaw `gateway.controlUi.allowInsecureAuth=true` warning read-only before deciding whether any configuration change is appropriate.
+
+### Next
+- Start the next Fane session with the site-wide website-usability/mobile pass, especially real iPhone/Safari use. Define the problems from actual use before implementing responsive changes. Keep Home v1 small and complete rather than reopening its semantics. After the website reaches a genuinely useful baseline, return to Phase 1 Year 1 market learning. Stage 3 signal detection remains deferred.
+
 ## 2026-08-08
 
 ### What changed
